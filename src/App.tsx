@@ -77,11 +77,13 @@ export default function App() {
             <Bot className="w-8 h-8 text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Discord Guard <span className="text-xs font-mono bg-white/5 px-2 py-0.5 rounded ml-2 uppercase opacity-50">v1.5.0</span></h1>
+            <h1 className="text-2xl font-bold tracking-tight">Natsumi 24/7 <span className="text-xs font-mono bg-white/5 px-2 py-0.5 rounded ml-2 uppercase opacity-50">v2.0.0</span></h1>
             <p className="text-gray-400 text-sm flex items-center gap-2">
-              {data?.tag || 'Initializing system...'}
-              {data?.status === 'Online' && (
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              {data?.tag || 'System Standby'}
+              {data?.status === 'Online' ? (
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+              ) : (
+                <span className="flex h-2 w-2 rounded-full bg-red-500" />
               )}
             </p>
           </div>
@@ -191,10 +193,10 @@ export default function App() {
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-medium">
                 <span className="text-gray-400">Target Repo:</span>
-                <span className="text-indigo-400 font-mono">NATSUMI_BOT</span>
+                <span className="text-indigo-400 font-mono">natsumi-24-7</span>
               </div>
               <p className="text-xs text-gray-400 leading-relaxed">
-                GitHub 리포지토리의 코드를 실시간으로 반영하려면 AI Studio 메뉴의 <strong>Settings &gt; Export to GitHub</strong>를 사용하여 <code>haruki7777/NATSUMI_BOT</code> 리포지토리를 연결하세요.
+                GitHub 리포지토리의 코드를 실시간으로 반영하려면 AI Studio 메뉴의 <strong>Settings &gt; Export to GitHub</strong>를 사용하여 <code>haruki7777/natsumi-24-7</code> 리포지토리를 연결하세요.
               </p>
               <div className="flex gap-2">
                 <button className="flex-1 py-2 bg-[#24292e] hover:bg-[#2f363d] text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-2 border border-white/5 uppercase tracking-wider">
@@ -202,7 +204,7 @@ export default function App() {
                   Link Repo
                 </button>
                 <a 
-                  href="https://github.com/haruki7777/NATSUMI_BOT" 
+                  href="https://github.com/haruki7777/natsumi-24-7" 
                   target="_blank" 
                   rel="noreferrer"
                   className="px-3 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors border border-white/10"

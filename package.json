@@ -1,4 +1,13 @@
 {
+  "name": "natsumi-discord-bot",
+  "version": "2.0.0",
+  "description": "Natsumi Discord Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "lint": "eslint ."
+  },
   "dependencies": {
     "@discordjs/voice": "^0.16.0",
     "canvacord": "^5.4.8",

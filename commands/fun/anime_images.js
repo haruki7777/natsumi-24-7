@@ -3,18 +3,25 @@ const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("nsfw")
-    .setDescription("NSFW 이미지를 보여준다냥 (후방주의!)")
+    .setName("애니짤")
+    .setDescription("귀여운 애니메이션 이미지를 보여준다냥!")
     .addStringOption((f) =>
       f
         .setName("카테고리")
-        .setDescription("보고 싶은 카테고리를 선택해주라냥")
+        .setDescription("카테고리를 선택해주라냥")
         .setRequired(true)
         .addChoices(
           { name: "Waifu", value: "waifu" },
           { name: "Neko", value: "neko" },
-          { name: "Trap", value: "trap" },
-          { name: "Blowjob", value: "blowjob" }
+          { name: "캐치", value: "cringe" },
+          { name: "허그", value: "hug" },
+          { name: "키스", value: "kiss" },
+          { name: "핥기", value: "lick" },
+          { name: "쓰다듬기", value: "pat" },
+          { name: "찌르기", value: "poke" },
+          { name: "슬랩", value: "slap" },
+          { name: "스마일", value: "smile" },
+          { name: "윙크", value: "wink" }
         )
     ),
   /**
@@ -22,28 +29,22 @@ module.exports = {
    */
   async execute(interaction) {
     await interaction.deferReply();
-
-    if (!interaction.channel.nsfw) {
-      return interaction.editReply({
-        content: "⚠️ **이 명령어는 NSFW 채널에서만 사용할 수 있다냥!**",
-      });
-    }
-
     const category = interaction.options.getString("카테고리");
+
     try {
-      const response = await fetch(`https://api.waifu.pics/nsfw/${category}`);
+      const response = await fetch(`https://api.waifu.pics/sfw/${category}`);
       const data = await response.json();
 
       const embed = new EmbedBuilder()
-        .setTitle(`🔞 당신은 변태인거냐냥?! (${category})`)
+        .setTitle(`✨ ${category}!! 귀엽다냥!`)
         .setTimestamp()
-        .setColor("Red")
+        .setColor("Random")
         .setImage(data.url);
 
       interaction.editReply({ embeds: [embed] });
     } catch (err) {
       console.error(err);
-      interaction.editReply({ content: "**이미지를 가져오는 도중에 오류가 발생했다냥!**" });
+      interaction.editReply({ content: "**이미지를 가져오지 못했다냥!**" });
     }
   },
 };

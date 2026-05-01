@@ -1,23 +1,47 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
-import { Client, GatewayIntentBits, Events } from "discord.js";
+import fetch from "node-fetch";
+import mongoose from "mongoose";
+import { 
+  Client, 
+  GatewayIntentBits, 
+  Events, 
+  Collection, 
+  REST, 
+  Routes, 
+  Partials 
+} from "discord.js";
 
 dotenv.config();
+
+// Custom Client Type to support collections
+interface ExtendedClient extends Client {
+  commands: Collection<string, any>;
+  buttons: Collection<string, any>;
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // --- Discord Bot Logic ---
+  // --- Discord Bot Initialization ---
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildIntegrations,
+      GatewayIntentBits.GuildInvites,
+      GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
     ],
-  });
+    partials: [Partials.Channel],
+  }) as ExtendedClient;
+
+  client.commands = new Collection();
+  client.buttons = new Collection();
 
   let botStatus = "Offline";
   let botPing = -1;
@@ -34,87 +58,187 @@ async function startServer() {
     console.log(entry);
   };
 
-  // Heartbeat to prove it's alive
-  setInterval(() => {
-    if (client.isReady()) {
-      botPing = client.ws.ping;
-    }
-  }, 30000);
+  const discordToken = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN || process.env.TOKEN;
+  const clientId = process.env.ID;
+  const mongoUri = process.env.MONGOOSE;
 
+  // --- MongoDB Connection ---
+  if (mongoUri) {
+    mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      family: 4,
+    }).then(() => {
+      addLog("MongoDB Connected successfully.");
+    }).catch(err => {
+      addLog(`MongoDB Connection Failed: ${err.message}`);
+    });
+  }
+
+  // --- Dynamic Loader: Commands ---
+  const commandsJson: any[] = [];
+  const commandsPath = path.join(process.cwd(), "commands");
+  if (fs.existsSync(commandsPath)) {
+    const categories = fs.readdirSync(commandsPath);
+    for (const category of categories) {
+      const categoryPath = path.join(commandsPath, category);
+      if (fs.statSync(categoryPath).isDirectory()) {
+        const commandFiles = fs.readdirSync(categoryPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
+        for (const file of commandFiles) {
+          try {
+            const command = (await import(path.join(categoryPath, file))).default || (await import(path.join(categoryPath, file)));
+            if (command && 'data' in command && 'execute' in command) {
+              client.commands.set(command.data.name, command);
+              commandsJson.push(command.data.toJSON());
+              addLog(`Loaded command: ${command.data.name}`);
+            }
+          } catch (e: any) {
+            addLog(`Error loading command ${file}: ${e.message}`);
+          }
+        }
+      }
+    }
+  }
+
+  // --- Dynamic Loader: Events ---
+  const eventsPath = path.join(process.cwd(), "events");
+  if (fs.existsSync(eventsPath)) {
+    const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
+    for (const file of eventFiles) {
+      try {
+        const event = (await import(path.join(eventsPath, file))).default || (await import(path.join(eventsPath, file)));
+        if (event.once) {
+          client.once(event.name, (...args) => event.execute(...args, client));
+        } else {
+          client.on(event.name, (...args) => event.execute(...args, client));
+        }
+      } catch (e: any) {
+        addLog(`Error loading event ${file}: ${e.message}`);
+      }
+    }
+  }
+
+  // --- Dynamic Loader: Buttons ---
+  const buttonsPath = path.join(process.cwd(), "Buttons");
+  if (fs.existsSync(buttonsPath)) {
+    const buttonFiles = fs.readdirSync(buttonsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
+    for (const file of buttonFiles) {
+      try {
+        const button = (await import(path.join(buttonsPath, file))).default || (await import(path.join(buttonsPath, file)));
+        client.buttons.set(button.name, button);
+      } catch (e: any) {
+        addLog(`Error loading button ${file}: ${e.message}`);
+      }
+    }
+  }
+
+  // --- Slash Command Registration ---
+  if (discordToken && clientId && commandsJson.length > 0) {
+    const rest = new REST({ version: "10" }).setToken(discordToken);
+    try {
+      addLog(`Started refreshing ${commandsJson.length} application (/) commands.`);
+      await rest.put(Routes.applicationCommands(clientId), { body: commandsJson });
+      addLog("Successfully reloaded application (/) commands.");
+    } catch (error: any) {
+      addLog(`REST Error: ${error.message}`);
+    }
+  }
+
+  // --- Interaction Handler ---
+  client.on(Events.InteractionCreate, async (interaction) => {
+    try {
+      if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
+        
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.deferReply({ ephemeral: command.ephemeral || false }).catch(() => {});
+        }
+        
+        await command.execute(interaction);
+      } else if (interaction.isButton()) {
+        const button = client.buttons.get(interaction.customId);
+        if (button) {
+          await button.execute(interaction);
+        }
+      }
+    } catch (error: any) {
+      addLog(`Interaction Error: ${error.message}`);
+      if (interaction.isRepliable()) {
+        const content = '명령어 실행 중 오류가 발생했다냥!';
+        if (interaction.deferred || interaction.replied) {
+          await interaction.followUp({ content, ephemeral: true }).catch(() => {});
+        } else {
+          await interaction.reply({ content, ephemeral: true }).catch(() => {});
+        }
+      }
+    }
+  });
+
+  // --- System Monitoring & Self-Healing ---
+  setInterval(() => {
+    try {
+      if (client.isReady()) {
+        botPing = client.ws.ping;
+      } else if (botStatus === "Online") {
+        botStatus = "Reconnecting";
+        addLog("SYSTEM: Connection lost. Auto-recovery triggered.");
+        if (discordToken) client.login(discordToken).catch(e => addLog(`Recovery failed: ${e.message}`));
+      }
+    } catch (e: any) {
+      addLog(`Monitor Error: ${e.message}`);
+    }
+  }, 60000);
+
+  // --- Discord Built-in Events ---
   client.on(Events.ClientReady, (c) => {
     botStatus = "Online";
     botPing = c.ws.ping;
     botUptime = Date.now();
-    addLog(`Logged in as ${c.user.tag}! Bot is ready.`);
-  });
+    addLog(`Logged in as ${c.user.tag}! System core operational.`);
 
-  client.on(Events.Error, (error) => {
-    botStatus = "Error";
-    lastError = error.message;
-    addLog(`Discord Client Error: ${error.message}`);
-  });
-
-  client.on(Events.ShardDisconnect, () => {
-    botStatus = "Disconnected";
-    addLog("Shard disconnected. Attempting to reconnect...");
-  });
-
-  client.on(Events.ShardReconnecting, () => {
-    botStatus = "Reconnecting";
-    addLog("Shard is reconnecting...");
-  });
-
-  client.on(Events.ShardResume, () => {
-    botStatus = "Online";
-    addLog("Shard connection resumed.");
-  });
-
-  client.on(Events.Warn, (warn) => {
-    addLog(`Discord Client Warning: ${warn}`);
+    // KoreanBots Stats Sync
+    setInterval(async () => {
+      try {
+        // Only if we have the kbot token (implied in user's index.js)
+        // Note: The token in user's code was hardcoded, I'll extract it if I can or leave a placeholder
+        const kBotToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjkwNTM1NTQ5MTcwODkwMzQ4NSIsImlhdCI6MTY3MTY5MzI4Mn0.PLZUpymiTlFDpRXcUH_bH-4KGwiSPQJsBNhq_bN796sTOMuPOLyaQvrme0ZeuYgtnRZk1r9vgUAx9Q27P7j0NEkR5bTYy1vFptDs2QvtaHZAyHcfPVwF_jiXHWwbtRqbCPof6neLCq6rktnm5VULIQqo076QE5-kPgJ2ZkqH9IU";
+        await fetch(`https://koreanbots.dev/api/v2/bots/905355491708903485/stats`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': kBotToken,
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({ 
+            "servers": client.guilds.cache.size, 
+            "shards": client.shard?.count || 1 
+          })
+        });
+      } catch (e) {}
+    }, 600000);
   });
 
   client.on(Events.MessageCreate, (message) => {
     if (message.author.bot) return;
     messageCount++;
-
-    if (message.content === "!ping") {
-      message.reply(`Pong! Latency is ${client.ws.ping}ms.`);
-      addLog(`Responded to !ping from ${message.author.tag}`);
-    }
-
-    if (message.content === "!help") {
-      message.reply("Commands: !ping, !echo [text], !stats");
-      addLog(`Help requested by ${message.author.tag}`);
-    }
-
-    if (message.content === "!stats") {
-      const uptimeSec = Math.floor((Date.now() - (botUptime || Date.now())) / 1000);
-      message.reply(`System Status: ${botStatus}\nUptime: ${uptimeSec}s\nMessages Handled: ${messageCount}`);
-      addLog(`Stats requested by ${message.author.tag}`);
-    }
-    
-    // Echo command as a test
-    if (message.content.startsWith("!echo ")) {
-      const content = message.content.slice(6);
-      message.reply(content);
-      addLog(`Echoed message for ${message.author.tag}`);
-    }
+    // Legacy prefix handling if needed
+    if (message.content === "!ping") message.reply(`Pong! ${client.ws.ping}ms`);
   });
 
-  // Keep-alive/Reconnect logic is built into discord.js v14
-  // but we can add manual check if needed.
-
-  const discordToken = process.env.DISCORD_TOKEN;
+  client.on(Events.Error, e => {
+    botStatus = "Error";
+    lastError = e.message;
+    addLog(`DJS Error: ${e.message}`);
+  });
 
   if (discordToken) {
-    client.login(discordToken).catch((err) => {
+    client.login(discordToken).catch(e => {
       botStatus = "Login Failed";
-      lastError = err.message;
-      addLog(`Failed to login: ${err.message}`);
+      addLog(`Login Error: ${e.message}`);
     });
   } else {
     botStatus = "No Token";
-    addLog("No DISCORD_TOKEN found in environment variables.");
+    addLog("Missing DISCORD_TOKEN / DISCORD_BOT_TOKEN / TOKEN.");
   }
 
   // --- API Routes ---
