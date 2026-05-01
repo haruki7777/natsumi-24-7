@@ -1,0 +1,6 @@
+{
+  "name": "Robust Discord Bot Dashboard",
+  "description": "A 24/7 Discord bot with a real-time monitoring dashboard and error recovery.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
