@@ -1,12 +1,12 @@
 const { Events, ChannelType } = require("discord.js");
-const client = require("../index");
 
 module.exports = {
   name: Events.InteractionCreate,
   /**
    * @param {import("discord.js").Interaction} interaction
+   * @param {import("discord.js").Client} client
    */
-  async execute(interaction) {
+  async execute(interaction, client) {
     // DM Block
     if (interaction.channel?.type === ChannelType.DM) {
       const msg = "**봇의 기능은 서버 내에서만 사용하실 수 있습니다냥!**";
@@ -18,8 +18,12 @@ module.exports = {
 
     // Slash Command Handling
     if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
+      console.log(`[InteractionLog] Command: ${interaction.commandName} | User: ${interaction.user.username}`);
       const command = client.commands.get(interaction.commandName);
-      if (!command) return;
+      if (!command) {
+          console.warn(`[InteractionLog] Command not found in client.commands: ${interaction.commandName}`);
+          return;
+      }
 
       // Note: We don't automatically defer here because some commands might use Modals
       // And we want to avoid double deferring since commands already call it.

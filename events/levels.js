@@ -1,36 +1,12 @@
-const { Client, Message, MessageType, EmbedBuilder } = require('discord.js')
-
-const featuresDB = require('../models/Features.js') 
+const { EmbedBuilder } = require('discord.js')
 const levelDB = require('../models/LevelSystem.js')
 
 const calculateXP = (level) => level * level * 100
 
-module.exports = {
-    name: "messageCreate",
-    rest: false,
-    once: false,
-    /**
-     * 
-     * @param {Message} message 
-     * @param {Client} client 
-     */
-    async execute(message, client) {
-        const { guild, member } = message
-        if(!message.inGuild()) return;
-       if(message.author.bot) return;
-
-        const levelSystemCheck = await featuresDB.findOne({GuildID: guild.id})
-        if(levelSystemCheck && levelSystemCheck.LevelSystem.Enabled) {
-         addXP(guild.id, member.id, 5, message, client)
-        }
-    },
-    calculateXP
-}
-
 /**
- * @param {Message} message 
+ * @param {import("discord.js").Message} message 
  */
-const addXP = async(guildId, userId, xpToAdd, message, client) => {
+const addXP = async(guildId, userId, xpToAdd, message) => {
     const result = await levelDB.findOneAndUpdate({
         GuildID: guildId,
         UserID: userId
@@ -50,16 +26,16 @@ const addXP = async(guildId, userId, xpToAdd, message, client) => {
 
     if(xp >= needed) {
         level++
-        xp -= needed
+        xp = xp - needed
 
         const LevelEmbed = new EmbedBuilder()
         .setTitle("레벨 업!!")
-        .setDescription(`축하해요! **${message.member.user.username}**! 당신은 지금! __**레벨 ${level}을(를) 얻었다냥!**__ 🥳`)
-        .setThumbnail(message.member.user.displayAvatarURL())
+        .setDescription(`축하해요! **${message.author.username}**! 당신은 지금! __**레벨 ${level}을(를) 얻었다냥!**__ 🥳`)
+        .setThumbnail(message.author.displayAvatarURL())
         .setColor(`Orange`)
         .setTimestamp(Date.now());
 
-        message.reply({embeds: [LevelEmbed]});
+        message.reply({embeds: [LevelEmbed]}).catch(() => {});
 
         await levelDB.updateOne({
             GuildID: guildId,
@@ -69,4 +45,9 @@ const addXP = async(guildId, userId, xpToAdd, message, client) => {
             xp: xp,
         })
     }
+}
+
+module.exports = {
+    calculateXP,
+    addXP
 }

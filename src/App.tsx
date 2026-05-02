@@ -11,7 +11,6 @@ import {
   Bot,
   ExternalLink,
   RefreshCcw,
-  Github,
   GitBranch
 } from 'lucide-react';
 
@@ -184,10 +183,10 @@ export default function App() {
           {/* GitHub Integration Card */}
           <div className="p-6 bg-[#24292e]/10 border border-[#24292e]/30 rounded-xl space-y-4 relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Github className="w-24 h-24" />
+              <Bot className="w-24 h-24" />
             </div>
             <h3 className="flex items-center gap-2 font-bold text-gray-200">
-              <Github className="w-4 h-4" />
+              <Bot className="w-4 h-4" />
               GitHub Repository Sync
             </h3>
             <div className="space-y-3">
@@ -234,7 +233,7 @@ export default function App() {
             </h3>
             <div className="text-sm text-gray-400 space-y-3 font-sans">
               <p>
-                Discord 봇 토큰이 설정되지 않았습니다. AI Studio 우측 상단의 <strong>Secrets</strong> 패널에서 <code className="text-indigo-300 bg-indigo-500/10 px-1 rounded font-mono">DISCORD_TOKEN</code>을 추가해 주세요.
+                Discord 봇 토큰이 설정되지 않았습니다. AI Studio 우측 상단의 <strong>Secrets</strong> 패널에서 <code className="text-indigo-300 bg-indigo-500/10 px-1 rounded font-mono">TOKEN</code>을 추가해 주세요.
               </p>
             </div>
           </div>

@@ -41,6 +41,24 @@ module.exports = {
         ],
       });
     }
+    if (dobak_find.money < 10000) {
+      return interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setDescription(
+              `${interaction.user.username}님! 도박을 하려면 최소 **10,000원** 이상이 있어야 한다냥!\n\`/출석체크\`로 돈을 더 모아주라냥!`
+            )
+            .setColor("Red")
+            .setAuthor({
+              name: `${interaction.user.tag}`,
+              iconURL: `${interaction.user.displayAvatarURL({
+                dynamic: true,
+              })}`,
+            }),
+        ],
+      });
+    }
+
     const bettingMoney = interaction.options.getInteger("금액");
     if (dobak_find.money < bettingMoney) {
       return interaction.editReply({

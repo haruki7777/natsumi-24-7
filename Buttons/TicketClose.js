@@ -20,18 +20,21 @@ module.exports = {
         guildId: interaction.guild.id,
       });
       if (!log_Find) {
-        console.log("로그 전송 실패쓰");
+        console.log("로그 설정이 되어있지 않다냥 (LogDB)");
+        return interaction.channel.delete().catch(console.error);
       } else {
-        const log_Find = await log_Table.findOne({
-          guildId: interaction.guild.id,
-        });
-        interaction.guild.channels.cache.get(log_Find.channelId).send({
-          content: `<@${interaction.channel.name.split("-")[1]}>님의 ${
-            interaction.channel.name.split("-")[0]
-          } 티켓이 종료되었다냥!`,
-          files: [file],
-        });
-        interaction.channel.delete();
+        const logChannel = interaction.guild.channels.cache.get(log_Find.channelId);
+        if (logChannel) {
+          const parts = interaction.channel.name.split("-");
+          const targetId = parts[parts.length - 1];
+          const targetName = parts.slice(0, -1).join("-") || interaction.channel.name;
+
+          await logChannel.send({
+            content: `<@${targetId}>님의 ${targetName} 티켓이 종료되었다냥!`,
+            files: [file],
+          }).catch(console.error);
+        }
+        await interaction.channel.delete().catch(console.error);
       }
     } else {
       interaction.reply({

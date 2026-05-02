@@ -3,7 +3,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("청소")
-        .setDescription("청소할 메시지 와 유저를 넣어주라냥! [너무오래된 메시지는 삭제를 못한다냥!!]")
+        .setDescription("청소할 메시지 수와 유저를 선택해주세요! (오래된 메시지는 불가능해요)")
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
         .addIntegerOption(option =>
             option.setName('숫자')

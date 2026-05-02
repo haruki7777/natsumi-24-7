@@ -1,5 +1,4 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const client = require("../../index");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -8,7 +7,7 @@ module.exports = {
   /**
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
-  async execute(interaction) {
+  async execute(interaction, client) {
     await interaction.deferReply();
     const msg = await interaction.fetchReply();
     const client_ping = client.ws.ping;

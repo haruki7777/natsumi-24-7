@@ -2,22 +2,35 @@
   "name": "natsumi-discord-bot",
   "version": "2.0.0",
   "description": "Natsumi Discord Bot",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js",
-    "lint": "eslint ."
+    "start": "tsx server.ts",
+    "dev": "tsx server.ts",
+    "lint": "eslint .",
+    "build": "vite build"
   },
   "dependencies": {
-    "@discordjs/voice": "^0.16.0",
-    "canvacord": "^5.4.8",
-    "captcha-canvas": "^3.2.1",
+    "@google/genai": "^1.51.0",
+    "@google/generative-ai": "^0.24.1",
+    "@tailwindcss/vite": "^4.2.4",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "axios": "^1.15.2",
+    "clsx": "^2.1.1",
     "discord-html-transcripts": "^3.1.4",
     "discord.js": "^14.9.0",
     "dotenv": "^16.0.3",
-    "google-tts-api": "^2.0.2",
+    "express": "^4.22.1",
+    "lucide-react": "^1.14.0",
     "mongoose": "^7.0.3",
+    "motion": "^12.38.0",
     "node-fetch": "^2.6.9",
-    "request": "^2.88.2"
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4.2.4",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10"
   }
 }

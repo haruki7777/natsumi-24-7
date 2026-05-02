@@ -1,6 +1,5 @@
 const { readdirSync } = require("fs");
 const path = require("path");
-const client = require("../../index");
 const {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -15,7 +14,7 @@ module.exports = {
     .setName("도움말")
     .setDescription("도움말을 보여준다냥"),
 
-  async execute(interaction) {
+  async execute(interaction, client) {
     await interaction.deferReply();
 
     const command_folder_name = "commands";
@@ -38,9 +37,11 @@ module.exports = {
       ]);
 
     const embeds = {};
-    const categories = readdirSync(path.join(process.cwd(), command_folder_name));
+    const categories = readdirSync(path.join(process.cwd(), command_folder_name), { withFileTypes: true });
 
-    for (const category of categories) {
+    for (const categoryEntry of categories) {
+      if (!categoryEntry.isDirectory()) continue;
+      const category = categoryEntry.name;
       if (category.startsWith("broken_") || category === "ContextMenu") continue;
       
       embeds[category] = new EmbedBuilder()

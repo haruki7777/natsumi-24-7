@@ -2,7 +2,6 @@ const {
   SlashCommandBuilder,
   AttachmentBuilder,
 } = require("discord.js");
-const Canvacord = require("canvacord");
 const { calculateXP } = require("../../events/levels");
 const featuresDB = require("../../models/Features");
 const levelsDB = require("../../models/LevelSystem");
@@ -42,28 +41,16 @@ module.exports = {
       });
     }
 
-    const rankcard = new Canvacord.Rank()
-      .setAvatar(targetUser.displayAvatarURL({ extension: "png" }))
-      .setCurrentXP(levelData.xp || 0)
-      .setLevel(levelData.level || 1)
-      .setRequiredXP(calculateXP(levelData.level || 1))
-      .setProgressBar("Orange")
-      .setUsername(targetUser.username)
-      .setDiscriminator(targetUser.discriminator !== "0" ? targetUser.discriminator : "0000")
-      .setBackground("IMAGE", levelSystemCheck.LevelSystem.Background || "https://media.discordapp.net/attachments/1042125737353805934/1061316849968615485/F304A518-A461-41EC-8A82-26ED2B87D156.png")
-      .renderEmojis(true)
-      .setLevelColor("Orange");
+    const xpToNextLevel = calculateXP(levelData.level || 1);
+    const progress = Math.floor(((levelData.xp || 0) / xpToNextLevel) * 100);
 
-    // Optional: Try to set custom font if it exists
-    const fontPath = path.join(process.cwd(), "fonts", "HSJiptokki-Round.ttf");
-    try {
-        rankcard.registerFonts([{ path: fontPath, name: "HSJiptokki Round" }]);
-    } catch (e) {
-        // Fallback to default font
-    }
+    const embed = {
+      title: `${targetUser.username}님의 랭크 정보`,
+      description: `레벨: **${levelData.level || 1}**\nXP: **${levelData.xp || 0} / ${xpToNextLevel}** (${progress}%)`,
+      color: 0xffa500,
+      thumbnail: { url: targetUser.displayAvatarURL() }
+    };
 
-    const img = await rankcard.build();
-    const attachment = new AttachmentBuilder(img, { name: "rank.png" });
-    await interaction.editReply({ files: [attachment] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

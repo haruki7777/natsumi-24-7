@@ -1,7 +1,7 @@
 // Commands/* 폴더에 넣어주세요
 
 const moneycooltime = "86400"; //출석체크 명령어 쿨타임을 정해주세요 | 1초 = 1
-const moneygiveamount = 10000; //출석체크 명령어를 사용하면 받을 돈을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
+const moneygiveamount = 5000; //출석체크 명령어를 사용하면 받을 돈을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
 
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const dailycheck_Schema = require("../../models/dailycheck");
@@ -73,17 +73,16 @@ module.exports = {
           money: dobak_find.money + moneygiveamount,
         }
       );
+      dobak_find.money += moneygiveamount;
     } else {
       dobak_find = await new dobak_Schema({
         userid: interaction.user.id,
         money: Number(moneygiveamount),
         date: Math.round(new Date() / 1000),
       }).save();
-      // Ensure dobak_find is not null for the next line
-      dobak_find = { money: 0 }; 
     }
 
-    const currentMoney = (dobak_find.money || 0) + moneygiveamount;
+    const currentMoney = dobak_find.money;
 
     const embed = new EmbedBuilder()
       .setColor("Green")
