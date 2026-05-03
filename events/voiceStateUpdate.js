@@ -4,10 +4,10 @@ if (!Channel_delete) {
   return console.log("음성채널 생성 코드 에러 : 음성채널 세팅을 완료해 주세요");
 }
 
-const Schema = require("../models/privateVoice");
-const { ChannelType } = require("discord.js");
+import Schema from "../models/privateVoice.js";
+import { ChannelType } from "discord.js";
 const Channel_list = new Set();
-module.exports = {
+export default {
   name: "voiceStateUpdate",
   /**
    *

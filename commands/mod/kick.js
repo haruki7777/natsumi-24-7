@@ -1,6 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 
-module.exports = {
+export default {
     data: new SlashCommandBuilder()
         .setName("추방")
         .setDescription("해당서버에서 한명을 추방시켜요!!")

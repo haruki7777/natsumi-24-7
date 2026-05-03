@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import LearnedData from "../../models/LearnedData.js";
 import BannedWords from "../../models/BannedWords.js";
-import { GoogleGenAI } from "@google/genai";
+import { generateDistributedContent } from "../../utils/ai.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -35,45 +35,27 @@ export default {
         });
     }
 
-    const getValidKey = () => {
-        const k = process.env.MY_GEMINI_API_KEY;
-        if (!k) return null;
-        const cleaned = k.toString().replace(/['"]/g, "").trim();
-        if (cleaned.length > 10) return cleaned;
-        return null;
+    const isUnhealthy = async (text) => {
+        try {
+            const prompt = `Check if the following text is HIGHLY sexually explicit or extremely harmful hate speech. Reply exactly 'SAFE' or 'UNSAFE'. If it's just teasing or common words, reply 'SAFE'.\n\nText: ${text}`;
+            
+            const response = await generateDistributedContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }]
+            });
+            
+            const feedback = response.text?.trim().toUpperCase();
+            return feedback === "UNSAFE";
+        } catch (e) {
+            console.error("Content filtering error:", e);
+            
+            // Minimal safety fallback if AI fails (quota or other issues)
+            const unsafe = /\b(섹스|sex|야동|av|포르노|porn)\b/i;
+            return unsafe.test(text);
+        }
     };
 
-    const apiKey = getValidKey();
-
-    if (!apiKey) {
-       // Minimal safety fallback if key missing
-       const unsafe = /\b(섹스|sex|야동|av|포르노|porn)\b/i;
-       if (unsafe.test(question) || unsafe.test(answer)) {
-           return interaction.reply({ content: "흥! 그런 불쾌한 건 나한테 가르치지 마! 꺼져!", ephemeral: true });
-       }
-    } else {
-        const ai = new GoogleGenAI({ apiKey });
-        
-        const isUnhealthy = async (text) => {
-            try {
-                const prompt = `Check if the following text is HIGHLY sexually explicit or extremely harmful hate speech. Reply exactly 'SAFE' or 'UNSAFE'. If it's just teasing or common words, reply 'SAFE'.\n\nText: ${text}`;
-                
-                const response = await ai.models.generateContent({
-                    model: "gemini-3-flash-preview",
-                    contents: [{ role: "user", parts: [{ text: prompt }] }]
-                });
-                
-                const feedback = response.text?.trim().toUpperCase();
-                return feedback === "UNSAFE";
-            } catch (e) {
-                console.error("Content filtering error:", e);
-                return false; 
-            }
-        };
-
-        if (await isUnhealthy(question) || await isUnhealthy(answer)) {
-            return interaction.reply({ content: "흥! 그런 불쾌한 건 나한테 가르치지 마! 꺼져!", ephemeral: true });
-        }
+    if (await isUnhealthy(question) || await isUnhealthy(answer)) {
+        return interaction.reply({ content: "흥! 그런 불쾌한 건 나한테 가르치지 마! 꺼져!", ephemeral: true });
     }
 
     try {

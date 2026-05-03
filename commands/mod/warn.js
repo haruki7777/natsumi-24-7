@@ -1,11 +1,11 @@
-const {
+import {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
-} = require("discord.js");
-const warning_Schema = require("../../models/warnings");
+} from "discord.js";
+import warning_Schema from "../../models/warnings.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("경고")
     .setDescription("경고를 부여/회수합니다냥")

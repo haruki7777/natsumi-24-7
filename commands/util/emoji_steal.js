@@ -1,7 +1,7 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
-const fetch = require("node-fetch");
+import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from "discord.js";
+import fetch from "node-fetch";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("이모지스틸")
     .setDescription("이모지를 서버로 가져온다냥!")

@@ -43,9 +43,9 @@ let ServerAuthLevel = {
   4: "매우 높음",
 };
 
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("서버정보")
     .setDescription("서버정보를 확인한다냥!"),

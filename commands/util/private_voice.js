@@ -1,7 +1,7 @@
-const { SlashCommandBuilder, ChannelType, PermissionFlagsBits } = require("discord.js");
-const Schema = require("../../models/privateVoice");
+import { SlashCommandBuilder, ChannelType, PermissionFlagsBits } from "discord.js";
+import Schema from "../../models/privateVoice.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("개인음성채널")
     .setDescription("개인 음성 채널 생성 시스템 설정")

@@ -1,6 +1,6 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("타임아웃")
     .setDescription("시끄러운 냥이들을 조용히 시키자 ㅋㅋ")

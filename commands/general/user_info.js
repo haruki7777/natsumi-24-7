@@ -1,10 +1,10 @@
-const {
+import {
   SlashCommandBuilder,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-} = require("discord.js");
+} from "discord.js";
 
 let UserStatus = {
   online: "온라인",
@@ -22,7 +22,7 @@ let ActivitiesType = {
   5: "참가 중",
 };
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("유저정보")
     .setDescription("유저정보를 확인한다냥!")

@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const LearnedDataSchema = new mongoose.Schema({
   question: { type: String, required: true },
@@ -10,4 +10,4 @@ const LearnedDataSchema = new mongoose.Schema({
 // For keyword searching if needed
 LearnedDataSchema.index({ question: "text" });
 
-module.exports = mongoose.model("LearnedData", LearnedDataSchema);
+export default mongoose.model("LearnedData", LearnedDataSchema);

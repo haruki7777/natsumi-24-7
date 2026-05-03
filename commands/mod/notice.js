@@ -1,11 +1,11 @@
-const {
+import {
   SlashCommandBuilder,
   EmbedBuilder,
   ChannelType,
   PermissionFlagsBits,
-} = require("discord.js");
+} from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("공지")
     .setDescription("특정 채널에 공지를 전송한다냥")

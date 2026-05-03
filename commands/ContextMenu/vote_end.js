@@ -1,12 +1,12 @@
 // Commands/* 폴더에 넣어주세요
 
-const {
+import {
     ContextMenuCommandBuilder,
     EmbedBuilder,
     ApplicationCommandType,
-  } = require("discord.js");
+  } from "discord.js";
   
-  module.exports = {
+  export default {
     data: new ContextMenuCommandBuilder()
       .setName("개표")
       .setType(ApplicationCommandType.Message),

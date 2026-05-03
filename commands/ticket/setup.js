@@ -1,4 +1,4 @@
-const {
+import {
     SlashCommandBuilder,
     ChannelType,
     PermissionFlagsBits,
@@ -6,10 +6,10 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-  } = require("discord.js");
-  const ticket_Table = require("../../models/ticketDB");
+  } from "discord.js";
+  import ticket_Table from "../../models/ticketDB.js";
   
-  module.exports = {
+  export default {
     data: new SlashCommandBuilder()
       .setName("티켓설정")
       .setDescription("티켓 채널을 설정하라냥")

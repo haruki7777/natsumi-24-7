@@ -1,12 +1,12 @@
-const {
+import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
   SlashCommandBuilder,
-} = require("discord.js");
+} from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("배너")
     .setDescription("유저의 배너를 확인한다냥!")

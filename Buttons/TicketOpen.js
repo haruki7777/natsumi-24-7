@@ -1,13 +1,13 @@
-const {
+import {
     EmbedBuilder,
     PermissionFlagsBits,
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-  } = require("discord.js");
-  const Schema = require("../models/ticketDB");
+  } from "discord.js";
+import Schema from "../models/ticketDB.js";
   
-  module.exports = {
+  export default {
     name: "open",
     /**
      *

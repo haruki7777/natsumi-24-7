@@ -1,11 +1,11 @@
-const {
+import {
     EmbedBuilder,
     AuditLogEvent,
     PermissionFlagsBits,
-  } = require("discord.js");
-  const db = require("../models/MemberLogdb");
+  } from "discord.js";
+  import db from "../models/MemberLogdb.js";
   
-  module.exports = {
+  export default {
     name: "guildMemberRemove",
     /**
      *

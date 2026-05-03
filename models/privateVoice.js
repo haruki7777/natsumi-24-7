@@ -1,7 +1,7 @@
 
-const { model, Schema } = require("mongoose");
+import { model, Schema } from "mongoose";
 
-module.exports = model(
+export default model(
   "개인음성채널",
   new Schema({
     guildId: String,

@@ -1,5 +1,5 @@
-const { Schema, model } = require("mongoose");
-module.exports = model(
+import { Schema, model } from "mongoose";
+export default model(
   "경고",
   new Schema({
     guildID: String,

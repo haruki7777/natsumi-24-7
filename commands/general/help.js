@@ -1,15 +1,15 @@
-const { readdirSync } = require("fs");
-const path = require("path");
-const {
+import { readdirSync } from "fs";
+import path from "path";
+import {
   SlashCommandBuilder,
   EmbedBuilder,
   ButtonBuilder,
   ButtonStyle,
   StringSelectMenuBuilder,
   ActionRowBuilder,
-} = require("discord.js");
+} from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("도움말")
     .setDescription("도움말을 보여준다냥"),
@@ -60,20 +60,20 @@ module.exports = {
           emoji: "📁",
         });
 
-        for (const file of files) {
-          try {
-            const command = require(path.join(process.cwd(), command_folder_name, category, file));
-            if (command.data && command.data.name) {
-                embeds[category].addFields({
+        // Use already loaded commands from client
+        const categoryCommands = client.commands.filter(cmd => {
+            // This is a bit heuristic, but since we know where they were loaded from
+            // We can check if the file existed in that category
+            return files.includes(cmd.data.name + ".js") || files.includes(cmd.data.name + ".ts");
+        });
+
+        categoryCommands.forEach(command => {
+            embeds[category].addFields({
                 name: `/${command.data.name}`,
                 value: `${command.data.description || "설명 없음"}`,
                 inline: true,
-                });
-            }
-          } catch (e) {
-            console.error(`Error loading command ${file} for help:`, e);
-          }
-        }
+            });
+        });
       }
     }
 

@@ -12,7 +12,9 @@ import {
   Collection, 
   REST, 
   Routes, 
-  Partials 
+  Partials,
+  Options,
+  IntentsBitField
 } from "discord.js";
 
 dotenv.config();
@@ -28,19 +30,71 @@ async function startServer() {
   const PORT = 3000;
 
   // --- Discord Bot Initialization ---
+  // Using bitmask to exclude privileged intents (Ignore causing errors)
+  const safeIntents = new IntentsBitField(32767); 
+  safeIntents.remove(
+    IntentsBitField.Flags.GuildPresences, 
+    IntentsBitField.Flags.GuildMembers, 
+    IntentsBitField.Flags.MessageContent
+  );
+
   const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildIntegrations,
-      GatewayIntentBits.GuildInvites,
-      GatewayIntentBits.GuildVoiceStates,
-      GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent,
-      GatewayIntentBits.DirectMessages,
-      GatewayIntentBits.GuildMessageReactions,
-    ],
+    intents: safeIntents,
     partials: [Partials.Channel, Partials.Message, Partials.User],
-  }) as any; // Using any for simplicity with attached properties
+    // REST Optimization for stability
+    rest: {
+      offset: 0,
+      timeout: 15000,
+      retries: 3,
+    },
+    // Absolute Minimum Cache: Disable almost everything
+    makeCache: Options.cacheWithLimits({
+      MessageManager: 0,
+      ThreadManager: 0,
+      PresenceManager: 0,
+      ReactionManager: 0,
+      GuildMemberManager: 0,
+      UserManager: 0,
+      VoiceStateManager: 0,
+    }),
+    sweepers: {
+      messages: {
+        interval: 300, // 5 minutes
+        lifetime: 1,   // Extreme cleanup
+      },
+      users: {
+        interval: 300,
+        filter: () => (user: any) => user.id !== client.user?.id,
+      }
+    },
+  }) as any; 
+
+  // Global Error Handling to prevent crashes
+  process.on("unhandledRejection", (reason, promise) => {
+    console.error("[Anti-Crash] Unhandled Rejection at:", promise, "reason:", reason);
+  });
+
+  process.on("uncaughtException", (err, origin) => {
+    console.error("[Anti-Crash] Uncaught Exception:", err, "at:", origin);
+  });
+
+  // Faster GC and System Sweep (Every 2 minutes)
+  setInterval(() => {
+    try {
+      if (client.isReady()) {
+        client.guilds.cache.forEach((guild: any) => {
+           guild.members.cache.clear(); 
+           guild.messages.cache.clear();
+           guild.voiceStates.cache.clear();
+           guild.presences.cache.clear();
+        });
+        client.users.cache.clear();
+        client.channels.cache.clear();
+        import("./utils/cache.js").then(m => m.clearCache()).catch(() => {});
+      }
+      if (global.gc) global.gc();
+    } catch (e: any) {}
+  }, 120000); 
 
   const instanceId = Math.random().toString(36).substring(2, 8);
   client.instanceId = instanceId;
@@ -62,13 +116,13 @@ async function startServer() {
     console.log(entry);
   };
 
-  const discordToken = process.env.TOKEN;
+  const discordToken = process.env.TOKEN?.replace(/['"]/g, "").trim();
   const geminiKey = process.env.MY_GEMINI_API_KEY;
-  const clientId = process.env.ID;
-  const mongoUri = process.env.MONGOOSE;
+  const clientId = process.env.ID?.replace(/['"]/g, "").trim();
+  const mongoUri = process.env.MONGOOSE?.replace(/['"]/g, "").trim();
 
   if (geminiKey) {
-      addLog(`MY_GEMINI_API_KEY found (Length: ${geminiKey.length})`);
+      addLog(`MY_GEMINI_API_KEY found`);
   } else {
       addLog("WARNING: MY_GEMINI_API_KEY is missing!");
   }
@@ -82,7 +136,6 @@ async function startServer() {
   process.on("uncaughtException", (err) => {
     console.error(`[FATAL] Uncaught Exception: ${err.message}`);
     addLog(`Uncaught Exception: ${err.message}`);
-    // Do not exit process, stay alive
   });
 
   // --- MongoDB Connection ---
@@ -124,8 +177,10 @@ async function startServer() {
         const commandFiles = fs.readdirSync(categoryPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
         for (const file of commandFiles) {
           try {
-            const modulePath = path.join(categoryPath, file);
-            const moduleExports = await import(`file://${modulePath}`);
+            const modulePath = path.resolve(categoryPath, file);
+            // Use pathToFileURL for robust ESM imports on all platforms
+            const moduleUrl = new URL(`file://${modulePath}`);
+            const moduleExports = await import(moduleUrl.href);
             const command = moduleExports.default || moduleExports;
 
             if (command && command.data && typeof command.execute === 'function') {
@@ -135,12 +190,9 @@ async function startServer() {
               }
               client.commands.set(commandName, command);
               
-              // Ensure toJSON exists (standard for SlashCommandBuilder)
               const json = typeof command.data.toJSON === 'function' ? command.data.toJSON() : command.data;
               commandsJson.push(json);
               addLog(`Loaded command [${category}]: ${commandName}`);
-            } else {
-              addLog(`Skipped invalid command file: ${file} (missing data or execute)`);
             }
           } catch (e: any) {
             addLog(`Error loading command ${file}: ${e.message}`);
@@ -156,18 +208,12 @@ async function startServer() {
     const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
     for (const file of eventFiles) {
       try {
-        const modulePath = path.join(eventsPath, file);
-        const moduleExports = await import(`file://${modulePath}`);
+        const modulePath = path.resolve(eventsPath, file);
+        const moduleUrl = new URL(`file://${modulePath}`);
+        const moduleExports = await import(moduleUrl.href);
         const event = moduleExports.default || moduleExports;
 
-        console.log(`[EventLoader] Checking file: ${file}, name: ${event?.name}`);
-
         if (event && event.name && typeof event.execute === 'function') {
-          if (client.listeners(event.name).length > 0 && !event.once) {
-             console.log(`[EventLoader] Event ${event.name} already has listeners. Skipping ${file} to avoid duplicates.`);
-             continue;
-          }
-          console.log(`[EventLoader] Loading event: ${event.name} from ${file}`);
           if (event.once) {
             client.once(event.name, (...args) => event.execute(...args, client));
           } else {
@@ -187,8 +233,9 @@ async function startServer() {
     const buttonFiles = fs.readdirSync(buttonsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
     for (const file of buttonFiles) {
       try {
-        const modulePath = path.join(buttonsPath, file);
-        const moduleExports = await import(`file://${modulePath}`);
+        const modulePath = path.resolve(buttonsPath, file);
+        const moduleUrl = new URL(`file://${modulePath}`);
+        const moduleExports = await import(moduleUrl.href);
         const button = moduleExports.default || moduleExports;
         if (button && button.name) {
           client.buttons.set(button.name, button);
@@ -201,87 +248,23 @@ async function startServer() {
   }
 
   // --- Slash Command Registration ---
-  if (!clientId) {
-    addLog("WARNING: ID (Client ID) environment variable is missing. Slash commands will NOT be registered.");
-  }
-
   if (discordToken && clientId && commandsJson.length > 0) {
     const rest = new REST({ version: "10" }).setToken(discordToken);
     try {
-      addLog(`Started refreshing ${commandsJson.length} application (/) commands.`);
-      // Log command names for debugging
-      const names = commandsJson.map(c => c.name);
-      addLog(`Commands to register: ${names.join(", ")}`);
-      
-      if (!names.includes("나츠미")) {
-        addLog("CRITICAL: Command '나츠미' is MISSING from the registration list!");
-      }
-      
+      addLog(`Refreshing ${commandsJson.length} commands.`);
       await rest.put(Routes.applicationCommands(clientId), { body: commandsJson });
-      addLog("Successfully reloaded application (/) commands.");
+      addLog("Successfully reloaded commands.");
     } catch (error: any) {
       addLog(`REST Error: ${error.message}`);
-      if (error.rawError && error.rawError.errors) {
-        addLog(`Detailed Errors: ${JSON.stringify(error.rawError.errors)}`);
-      }
     }
   }
-
-  // --- (Handlers are now entirely managed by files in /events folder) ---
-
-  // --- System Monitoring ---
-  setInterval(() => {
-    try {
-      if (client.isReady()) {
-        botPing = client.ws.ping;
-      } else if (botStatus === "Online") {
-        botStatus = "Reconnecting";
-        addLog("SYSTEM: Connection lost. Discord.js will attempt auto-recovery.");
-      }
-    } catch (e: any) {
-      addLog(`Monitor Error: ${e.message}`);
-    }
-  }, 60000);
-
-  let heartbeatStarted = false;
-  let statsSyncStarted = false;
 
   // --- Discord Built-in Events ---
   client.on(Events.ClientReady, (c) => {
     botStatus = "Online";
     botPing = c.ws.ping;
     botUptime = Date.now();
-    addLog(`Logged in as ${c.user.tag}! System core operational.`);
-
-    // --- Heartbeat Logger (Only start once) ---
-    if (!heartbeatStarted) {
-      heartbeatStarted = true;
-      setInterval(() => {
-        const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
-        console.log(`[Heartbeat] Bot is alive - ${now} | Memory: ${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`);
-      }, 60000); 
-    }
-
-    // --- KoreanBots Stats Sync (Only start once) ---
-    if (!statsSyncStarted) {
-      statsSyncStarted = true;
-      setInterval(async () => {
-        try {
-          const kBotToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjkwNTM1NTQ5MTcwODkwMzQ4NSIsImlhdCI6MTY3MTY5MzI4Mn0.PLZUpymiTlFDpRXcUH_bH-4KGwiSPQJsBNhq_bN796sTOMuPOLyaQvrme0ZeuYgtnRZk1r9vgUAx9Q27P7j0NEkR5bTYy1vFptDs2QvtaHZAyHcfPVwF_jiXHWwbtRqbCPof6neLCq6rktnm5VULIQqo076QE5-kPgJ2ZkqH9IU";
-          await fetch(`https://koreanbots.dev/api/v2/bots/905355491708903485/stats`, {
-            method: 'POST',
-            headers: { 
-              'Authorization': kBotToken,
-              'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({ 
-              "servers": client.guilds.cache.size, 
-              "shards": client.shard?.count || 1 
-            })
-          });
-        } catch (e) {}
-      }, 600000);
-    }
+    addLog(`Logged in as ${c.user.tag}!`);
   });
 
   client.on(Events.Error, e => {
@@ -291,9 +274,15 @@ async function startServer() {
   });
 
   if (discordToken) {
+    addLog("Attempting to login...");
     client.login(discordToken).catch(e => {
       botStatus = "Login Failed";
-      addLog(`Login Error: ${e.message}`);
+      lastError = e.message;
+      addLog(`FATAL LOGIN ERROR: ${e.message}`);
+      if (e.message.includes("intents") || e.message.includes("privileged")) {
+        addLog("CRITICAL: 인텐트 오류 발생! Discord Developer Portal에서 'Message Content Intent'와 'Server Members Intent'를 활성화해주세요.");
+        addLog("방법: Discord Dev Portal -> Bot -> Privileged Gateway Intents 하위의 버튼 3개를 모두 켬.");
+      }
     });
   } else {
     botStatus = "No Token";
@@ -316,6 +305,17 @@ async function startServer() {
       logs: logs.slice().reverse(),
       tag: client.user?.tag || "N/A",
     });
+  });
+
+  app.post("/api/flush", (req, res) => {
+    try {
+      import("./utils/cache.js").then(m => m.clearCache());
+      if (global.gc) global.gc();
+      addLog("[System] Manual cache flush and GC triggered.");
+      res.json({ success: true, message: "Cache flushed" });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
   });
 
   // --- Vite Middleware ---

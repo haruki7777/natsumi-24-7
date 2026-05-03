@@ -1,6 +1,6 @@
-const { model, Schema } = require('mongoose')
+import { model, Schema } from 'mongoose';
 
-module.exports = model("Features", new Schema({
+export default model("Features", new Schema({
     GuildID: String,
     LevelSystem: {
         Enabled: {

@@ -1,7 +1,7 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
-const BannedWords = require("../../models/BannedWords");
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
+import BannedWords from "../../models/BannedWords.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("금지어")
     .setDescription("나츠미가 싫어하는 금지어를 관리합니다냥!")

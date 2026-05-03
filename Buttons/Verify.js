@@ -1,4 +1,4 @@
-module.exports = {
+export default {
     name: "verify",
     /**
      * @param {import("discord.js").ButtonInteraction} interaction

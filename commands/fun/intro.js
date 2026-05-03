@@ -1,6 +1,6 @@
-const { SlashCommandBuilder } = require("discord.js");
+import { SlashCommandBuilder } from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("소개")
     .setDescription("나츠미 자기소개 츤츤 스타일"),

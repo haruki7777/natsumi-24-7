@@ -1,13 +1,13 @@
-const {
+import {
     ChatInputCommandInteraction,
     SlashCommandBuilder,
     PermissionFlagsBits,
     EmbedBuilder,
-  } = require("discord.js");
+  } from "discord.js";
   
-  const featuresDB = require("../../models/Features.js");
+  import featuresDB from "../../models/Features.js";
   
-  module.exports = {
+  export default {
     data: new SlashCommandBuilder()
       .setName("레벨설정")
       .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)

@@ -1,12 +1,12 @@
 //Commands/* 에 넣어주세요
 
-const {
+import {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
-} = require("discord.js");
+} from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("차단")
     .setDescription("유저를 차단한다냥")

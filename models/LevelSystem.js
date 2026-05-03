@@ -1,6 +1,6 @@
-const { model, Schema } = require('mongoose')
+import { model, Schema } from 'mongoose';
 
-module.exports = model("LevelSystem", new Schema({
+export default model("LevelSystem", new Schema({
     GuildID: String,
     UserID: String,
     xp: {

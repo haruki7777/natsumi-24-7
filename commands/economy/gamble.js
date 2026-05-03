@@ -1,10 +1,10 @@
 const min_winrate = 10; //도박 최소 확률을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
 const max_winrate = 55; //도박 최대 확률을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
 
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const dobak_Schema = require("../../models/dobak");
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import dobak_Schema from "../../models/dobak.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("도박")
     .setDescription("도박을 한다냥!")

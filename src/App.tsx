@@ -129,10 +129,10 @@ export default function App() {
         />
         <StatCard 
           label="Health Check" 
-          value="Healthy" 
+          value={data?.lastError ? "Issues Found" : "Healthy"} 
           icon={<ShieldCheck className="w-5 h-5" />}
-          color="text-emerald-400"
-          subValue="Auto-repair active"
+          color={data?.lastError ? "text-red-400" : "text-emerald-400"}
+          subValue={data?.lastError ? data.lastError : "Auto-repair active"}
         />
       </div>
 
@@ -220,21 +220,37 @@ export default function App() {
               Management
             </h3>
             <div className="space-y-2">
-              <ActionButton label="Flush Node Cache" disabled />
+              <ActionButton 
+                label="Flush Node Cache" 
+                onClick={async () => {
+                   await fetch('/api/flush', { method: 'POST' });
+                   fetchStatus();
+                }}
+              />
               <ActionButton label="Clear Console History" disabled />
               <ActionButton label="Hard Cluster Restart" disabled />
             </div>
           </div>
 
-          <div className={`p-6 border rounded-xl space-y-4 transition-colors ${data?.status === 'No Token' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-white/5 border-white/10'}`}>
+          <div className={`p-6 border rounded-xl space-y-4 transition-colors ${data?.status === 'Login Failed' || data?.status === 'No Token' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-white/5 border-white/10'}`}>
             <h3 className="flex items-center gap-2 font-bold">
               <AlertCircle className="w-4 h-4" />
               System Alert
             </h3>
             <div className="text-sm text-gray-400 space-y-3 font-sans">
-              <p>
-                Discord 봇 토큰이 설정되지 않았습니다. AI Studio 우측 상단의 <strong>Secrets</strong> 패널에서 <code className="text-indigo-300 bg-indigo-500/10 px-1 rounded font-mono">TOKEN</code>을 추가해 주세요.
-              </p>
+              {data?.status === 'Login Failed' ? (
+                <div className="space-y-2">
+                   <p className="text-red-400 font-bold underline">봇 로그인 실패!</p>
+                   <p>원인: <code className="bg-black/50 p-1 rounded break-all">{data.lastError}</code></p>
+                   <p className="text-xs">힌트: 토큰이 올바른지, 혹은 Discord Developer Portal에서 <strong>Privileged Gateway Intents</strong> (Members, Content)가 켜져 있는지 확인해 보세요.</p>
+                </div>
+              ) : data?.status === 'No Token' ? (
+                <p>
+                  Discord 봇 토큰이 설정되지 않았습니다. AI Studio 우측 상단의 <strong>Secrets</strong> 패널에서 <code className="text-indigo-300 bg-indigo-500/10 px-1 rounded font-mono">TOKEN</code>을 추가해 주세요.
+                </p>
+              ) : (
+                <p>현재 모든 시스템이 정상적으로 작동 중입니다. 정기적인 청소 작업이 5분마다 진행됩니다.</p>
+              )}
             </div>
           </div>
         </div>
@@ -265,10 +281,11 @@ function StatCard({ label, value, icon, color, subValue }: { label: string, valu
   );
 }
 
-function ActionButton({ label, disabled }: { label: string, disabled?: boolean }) {
+function ActionButton({ label, disabled, onClick }: { label: string, disabled?: boolean, onClick?: () => void }) {
   return (
     <button 
       disabled={disabled}
+      onClick={onClick}
       className={`w-full text-left px-4 py-3 rounded-lg text-[11px] uppercase tracking-widest font-bold border transition-all ${
         disabled 
           ? 'bg-transparent border-white/5 text-gray-600 cursor-not-allowed' 

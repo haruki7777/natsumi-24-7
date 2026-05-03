@@ -1,12 +1,12 @@
-const { EmbedBuilder } = require('discord.js')
-const levelDB = require('../models/LevelSystem.js')
+import { EmbedBuilder } from 'discord.js';
+import levelDB from '../models/LevelSystem.js';
 
-const calculateXP = (level) => level * level * 100
+export const calculateXP = (level) => level * level * 100;
 
 /**
  * @param {import("discord.js").Message} message 
  */
-const addXP = async(guildId, userId, xpToAdd, message) => {
+export const addXP = async(guildId, userId, xpToAdd, message) => {
     const result = await levelDB.findOneAndUpdate({
         GuildID: guildId,
         UserID: userId
@@ -47,7 +47,3 @@ const addXP = async(guildId, userId, xpToAdd, message) => {
     }
 }
 
-module.exports = {
-    calculateXP,
-    addXP
-}

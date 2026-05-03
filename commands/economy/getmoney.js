@@ -3,10 +3,10 @@
 const moneycooltime = "60"; //돈받기 명령어 쿨타임을 정해주세요 | 1초 = 1
 const moneygiveamount = 5000; //돈받기 명령어를 사용하면 받을 돈을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
 
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const dobak_Schema = require("../../models/dobak");
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import dobak_Schema from "../../models/dobak.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("돈받기")
     .setDescription(`도박을 할 수 있는 돈 ${moneygiveamount}원을 드린다냥`),

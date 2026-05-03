@@ -1,8 +1,8 @@
 
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const axios = require("axios");
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import axios from "axios";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("sfw")
     .setDescription("귀여운 애니메이션 짤을 보여줍니다냥!")

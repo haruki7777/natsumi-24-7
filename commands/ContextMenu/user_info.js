@@ -1,10 +1,10 @@
-const {
+import {
     ContextMenuCommandBuilder,
     ApplicationCommandType,
     EmbedBuilder,
-  } = require("discord.js");
+  } from "discord.js";
   
-  module.exports = {
+  export default {
     data: new ContextMenuCommandBuilder()
       .setName("너님정보")
       .setType(ApplicationCommandType.User),
@@ -13,6 +13,7 @@ const {
      * @param {import("discord.js").UserContextMenuCommandInteraction} interaction
      */
     async execute(interaction) {
+      await interaction.deferReply();
       const User = interaction.targetUser;
       let bot;
       if (User.bot == true) {

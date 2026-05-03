@@ -1,9 +1,9 @@
 // Commands/* 폴더에 넣어주세요
 
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const dobak_Schema = require("../../models/dobak");
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import dobak_Schema from "../../models/dobak.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("잔액")
     .setDescription("도박 잔액을 확인한다냥")

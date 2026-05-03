@@ -1,8 +1,8 @@
-const { PermissionFlagsBits } = require("discord.js");
-const htmltrans = require("discord-html-transcripts");
-const log_Table = require("../models/LogDB");
+import { PermissionFlagsBits } from "discord.js";
+import htmltrans from "discord-html-transcripts";
+import log_Table from "../models/LogDB.js";
 
-module.exports = {
+export default {
   name: "close",
   /**
    *

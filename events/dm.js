@@ -1,13 +1,13 @@
 //Events/* 폴더에 넣어주세요
 const ment = "냐하핫 나를 불러줘서 고맙다냥!."; //정해주세요!
 
-const {
+import {
   EmbedBuilder,
   PermissionFlagsBits,
   AuditLogEvent,
-} = require("discord.js");
+} from "discord.js";
 
-module.exports = {
+export default {
   name: "guildCreate",
   /**
    * @param {import("discord.js").Guild} guild

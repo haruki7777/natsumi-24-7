@@ -1,13 +1,13 @@
-const {
+import {
   SlashCommandBuilder,
   AttachmentBuilder,
-} = require("discord.js");
-const { calculateXP } = require("../../events/levels");
-const featuresDB = require("../../models/Features");
-const levelsDB = require("../../models/LevelSystem");
-const path = require("path");
+} from "discord.js";
+import { calculateXP } from "../../events/levels.js";
+import featuresDB from "../../models/Features.js";
+import levelsDB from "../../models/LevelSystem.js";
+import path from "path";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("랭크")
     .setDescription("자신의 레벨이나 다른 사람의 레벨을 확인한다냥!")

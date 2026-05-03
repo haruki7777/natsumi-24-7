@@ -1,6 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("핑")
     .setDescription("봇의 핑을 확인한다냥!"),
@@ -8,49 +8,57 @@ module.exports = {
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction, client) {
-    await interaction.deferReply();
-    const msg = await interaction.fetchReply();
-    const client_ping = client.ws.ping;
-    const command_ping = msg.createdTimestamp - interaction.createdTimestamp;
+    if (interaction.replied || interaction.deferred) return;
     
-    let ping_st, command_st;
-    if (client_ping < 250) ping_st = "🟢";
-    else if (client_ping < 500) ping_st = "🟠";
-    else ping_st = "🔴";
+    try {
+      await interaction.deferReply();
+    } catch (e) {
+      console.error("[PingError] Failed to defer:", e.message);
+      return;
+    }
+    
+    const gatewayPing = client.ws.ping;
+    const apiLatency = Date.now() - interaction.createdTimestamp;
+    
+    let gatewayStatus;
+    if (gatewayPing < 150) gatewayStatus = "🟢";
+    else if (gatewayPing < 300) gatewayStatus = "🟠";
+    else gatewayStatus = "🔴";
 
-    if (command_ping < 500) command_st = "🟢";
-    else if (command_ping < 1000) command_st = "🟠";
-    else command_st = "🔴";
+    let apiStatus;
+    if (apiLatency < 300) apiStatus = "🟢";
+    else if (apiLatency < 600) apiStatus = "🟠";
+    else apiStatus = "🔴";
 
-    let embed_color = {
-      "🟢": "#00FF00",
-      "🟠": "#FFA500",
-      "🔴": "#ff0000",
+    const embed_color = {
+      "🟢": "#57F287",
+      "🟠": "#FEE75C",
+      "🔴": "#ED4245",
     };
     
-    const time = Math.round(client.readyTimestamp / 1000);
+    const uptime = Math.round(client.readyTimestamp / 1000);
     const embed = new EmbedBuilder()
       .setTitle("🏓 퐁!")
       .addFields(
         {
-          name: `슬커 응답속도`,
-          value: `**${command_ping}ms** (${command_st})`,
+          name: `📡 게이트웨이 (WS)`,
+          value: `**${gatewayPing}ms** (${gatewayStatus})`,
           inline: true,
         },
         {
-          name: `봇 지연시간`,
-          value: `**${client_ping}ms** (${ping_st})`,
+          name: `⚡ API 응답 (REST)`,
+          value: `**${apiLatency}ms** (${apiStatus})`,
           inline: true,
         },
         {
-          name: `업타임`,
-          value: `**<t:${time}:D> (<t:${time}:R>)**`,
+          name: `⏰ 업타임`,
+          value: `<t:${uptime}:D> (<t:${uptime}:R>)`,
         }
       )
-      .setColor(embed_color[ping_st])
+      .setColor(embed_color[gatewayStatus])
       .setFooter({
-        iconURL: `${client.user.displayAvatarURL()}`,
-        text: `${client.user.username}`,
+        iconURL: client.user.displayAvatarURL(),
+        text: `나츠미 최적화 모드 작동 중!`,
       })
       .setThumbnail(client.user.displayAvatarURL())
       .setTimestamp();

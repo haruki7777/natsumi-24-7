@@ -1,6 +1,7 @@
-const { Events, ChannelType } = require("discord.js");
+import { Events, ChannelType } from "discord.js";
+import ProcessedMessage from "../models/ProcessedMessage.js";
 
-module.exports = {
+export default {
   name: Events.InteractionCreate,
   /**
    * @param {import("discord.js").Interaction} interaction
@@ -18,6 +19,7 @@ module.exports = {
 
     // Slash Command Handling
     if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
+      const startTime = Date.now();
       console.log(`[InteractionLog] Command: ${interaction.commandName} | User: ${interaction.user.username}`);
       const command = client.commands.get(interaction.commandName);
       if (!command) {
@@ -25,18 +27,25 @@ module.exports = {
           return;
       }
 
-      // Note: We don't automatically defer here because some commands might use Modals
-      // And we want to avoid double deferring since commands already call it.
-      
       try {
-        await command.execute(interaction, client);
+        if (!interaction.deferred && !interaction.replied) {
+           await command.execute(interaction, client);
+        }
+        const duration = Date.now() - startTime;
+        if (duration > 1500) {
+            console.warn(`[Performance] Command ${interaction.commandName} took too long: ${duration}ms`);
+        }
       } catch (error) {
         console.error(`Error executing command ${interaction.commandName}:`, error);
         const errorMsg = "**명령어 실행 중 오류가 발생했다냥!**";
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({ content: errorMsg });
-        } else {
-          await interaction.reply({ content: errorMsg, ephemeral: true });
+        try {
+          if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ content: errorMsg }).catch(() => {});
+          } else {
+            await interaction.reply({ content: errorMsg, ephemeral: true }).catch(() => {});
+          }
+        } catch (subError) {
+          console.error("Secondary error in interaction error handler:", subError.message);
         }
       }
       return;

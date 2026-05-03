@@ -1,13 +1,13 @@
-const { 
+import { 
   SlashCommandBuilder, 
   ModalBuilder, 
   ActionRowBuilder, 
   TextInputBuilder, 
   TextInputStyle, 
   EmbedBuilder 
-} = require("discord.js");
+} from "discord.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("문의")
     .setDescription("나츠미 개발자에게 문의할 사항을 적어주라냥"),
