@@ -20,21 +20,37 @@ export default {
    */
   async execute(interaction) {
     await interaction.deferReply();
+    const now = new Date();
+    
+    // 9 AM KST is 00:00 UTC
+    const today9AmKst = new Date(now);
+    today9AmKst.setUTCHours(0, 0, 0, 0);
+
+    let lastResetUtc, nextResetUtc;
+    if (now < today9AmKst) {
+      // It's currently before 9 AM KST
+      lastResetUtc = new Date(today9AmKst.getTime() - 24 * 60 * 60 * 1000);
+      nextResetUtc = today9AmKst;
+    } else {
+      // It's currently after 9 AM KST
+      lastResetUtc = today9AmKst;
+      nextResetUtc = new Date(today9AmKst.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    const lastResetSeconds = Math.round(lastResetUtc.getTime() / 1000);
+    const nextResetSeconds = Math.round(nextResetUtc.getTime() / 1000);
+    const nowSeconds = Math.round(now.getTime() / 1000);
+
     const dailycheck_find = await dailycheck_Schema.findOne({
       userid: interaction.user.id,
     });
-    if (
-      dailycheck_find &&
-      Math.round(new Date() / 1000) <
-      dailycheck_find.date + Number(moneycooltime)
-    ) {
+
+    if (dailycheck_find && dailycheck_find.date >= lastResetSeconds) {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setDescription(
-              `**출석체크 쿨타임이 적용 중이다냥! (<t:${
-                dailycheck_find.date + Number(moneycooltime)
-              }:R>) 다시 시도해주라냥!**`
+              `**오늘 출석체크는 이미 완료했다냥! ㅋㅋㅋ 욕심쟁이 알박기 금지다냥!**\n\n⏰ **다음 리셋 (KST):** <t:${nextResetSeconds}:R> (<t:${nextResetSeconds}:F>)\n\n한국 표준시(KST) 기준 **매일 오전 9시**에 새로운 출석이 가능해진다냥! 조금만 더 기다려달라냥~!`
             )
             .setColor("Red")
             .setAuthor({
@@ -49,7 +65,7 @@ export default {
 
     // 1. Give XP
     if (interaction.guildId) {
-        await addXP(interaction.guildId, interaction.user.id, 50, interaction); // Give 50 XP per check-in
+      await addXP(interaction.guildId, interaction.user.id, 50, interaction); // Give 50 XP per check-in
     }
 
     if (dailycheck_find) {
@@ -57,14 +73,14 @@ export default {
         { userid: interaction.user.id },
         {
           count: dailycheck_find.count + 1,
-          date: Math.round(new Date() / 1000),
+          date: nowSeconds,
         }
       );
     } else {
       await new dailycheck_Schema({
         userid: interaction.user.id,
         count: 1,
-        date: Math.round(new Date() / 1000),
+        date: nowSeconds,
       }).save();
     }
 

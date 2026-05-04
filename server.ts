@@ -103,9 +103,16 @@ async function startServer() {
                 const json = typeof command.data.toJSON === 'function' ? command.data.toJSON() : command.data;
                 
                 // Validate payload and avoid duplicates
-                if (!json.name || (json.type === 1 && !json.description)) {
-                    addLog(`[Warning] Command ${commandName} in ${file} has invalid JSON payload.`);
+                if (!json.name) {
+                    addLog(`[Warning] Command in ${file} missing name.`);
+                    continue;
                 }
+
+                if (json.type === 1 && !json.description) {
+                    addLog(`[Warning] Slash Command ${json.name} in ${file} missing description.`);
+                }
+                
+                addLog(`[Loader] Loading command: ${json.name} (Type: ${json.type || 1}) from ${file}`);
 
                 if (commandsJson.some(c => c.name === json.name && c.type === json.type)) {
                     addLog(`[Warning] Duplicate command detected: ${json.name}. Skipping JSON entry.`);
@@ -175,6 +182,7 @@ async function startServer() {
     if (discordToken && clientId && commandsJsonCache.length > 0) {
       const rest = new REST({ version: "10" }).setToken(discordToken);
       try {
+        addLog(`Registering commands: ${commandsJsonCache.map(c => c.name).join(', ')}`);
         await rest.put(Routes.applicationCommands(clientId), { body: commandsJsonCache });
         addLog(`Successfully registered ${commandsJsonCache.length} slash commands.`);
       } catch (error: any) {
@@ -193,8 +201,8 @@ async function startServer() {
       botStatus = "Online";
       botPing = readyClient.ws.ping;
       botUptime = Date.now();
-      addLog(`[System] Natsumi v5.1.0 Ultimate | Ready as ${readyClient.user.tag}`);
-      addLog(`[Config] 100+ Guilds Optimized | Economy: Fish Bun Game (v5.1.0)`);
+      addLog(`[System] Natsumi v5.3.1 Ultimate | Ready as ${readyClient.user.tag}`);
+      addLog(`[Config] 100+ Guilds Optimized | Economy: KST 09:00 AM Sync (v5.3.1)`);
       
       if (!currentIntents.has(GatewayIntentBits.MessageContent)) {
           addLog("!!! CRITICAL: Message Content Intent missing !!!");
@@ -371,7 +379,7 @@ async function startServer() {
       lastError,
       logs: logs.slice().reverse(),
       tag: client?.user?.tag || "N/A",
-      engine: "v5.1.0 Ultimate Core",
+      engine: "v5.3.1 Ultimate Core",
     });
   });
 

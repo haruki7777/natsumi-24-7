@@ -76,7 +76,7 @@ export default function App() {
             <Bot className="w-8 h-8 text-pink-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Natsumi Dashboard <span className="text-xs font-mono bg-pink-50 text-pink-500 px-2 py-0.5 rounded ml-2 uppercase font-bold">Ultimate v5.1.0</span></h1>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Natsumi Dashboard <span className="text-xs font-mono bg-pink-50 text-pink-500 px-2 py-0.5 rounded ml-2 uppercase font-bold">Ultimate v5.3.1</span></h1>
             <p className="text-gray-500 text-sm flex items-center gap-2 font-medium">
               {data?.tag || 'System Standby'}
               {data?.status === 'Online' ? (
@@ -200,10 +200,10 @@ export default function App() {
               </div>
               <div className="flex items-center justify-between text-xs font-bold text-white/90">
                 <span>엔진 버전:</span>
-                <span className="bg-white/20 px-2 py-0.5 rounded">v5.1.0 (Ultimate Core)</span>
+                <span className="bg-white/20 px-2 py-0.5 rounded">v5.3.1 (Ultimate Core)</span>
               </div>
               <p className="text-[11px] text-white/80 leading-relaxed font-medium">
-                나츠미의 혁신적인 Ultimate v5.1.0 엔진이 가동 중입니다. 새로운 도박 시스템 '붕어빵 뽑기'가 추가되어, 전설의 황금 잉어빵을 노리는 짜릿한 재미를 더했습니다. 모든 도박 활동은 이제 경험치(XP)와 연동되어 당신의 명성을 높이는 데 기여합니다.
+                나츠미의 혁신적인 Ultimate v5.3.1 엔진이 가동 중입니다. 출석체크 시스템이 한국 표준시(KST)와 완벽하게 동기화되었습니다. 이제 서버 위치와 관계없이 매일 오전 9시(KST)에 정확히 리셋되며, 알박기 방지 로직과 함께 다음 출석까지 남은 시간을 실시간으로 안내합니다.
               </p>
             </div>
           </div>
