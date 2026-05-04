@@ -3,6 +3,7 @@ const max_winrate = 55; //도박 최대 확률을 입력해 주세요 (""안에 
 
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import dobak_Schema from "../../models/dobak.js";
+import { addXP } from "../../events/levels.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -80,6 +81,13 @@ export default {
     const random_number = Math.floor(Math.random() * (100 - 1 + 1)) + 1;
     const winrate =
       Math.floor(Math.random() * (max_winrate - min_winrate + 1)) + min_winrate;
+
+    // Award XP
+    if (interaction.guildId) {
+       const xpAmount = winrate > random_number ? 20 : 5;
+       await addXP(interaction.guildId, interaction.user.id, xpAmount, interaction);
+    }
+
     if (winrate > random_number) {
       await dobak_Schema.updateOne(
         { userid: interaction.user.id },

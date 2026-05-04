@@ -1,7 +1,7 @@
 //Events 폴더에 넣어주세요
 const Channel_delete = "2"; //생성된 채널에서 유저가 나갔을 때 몇 초 안에 다시 안 들어오면 채널이 삭제되게 할 건가요? 1 = 1초
 if (!Channel_delete) {
-  return console.log("음성채널 생성 코드 에러 : 음성채널 세팅을 완료해 주세요");
+  console.log("음성채널 생성 코드 에러 : 음성채널 세팅을 완료해 주세요");
 }
 
 import Schema from "../models/privateVoice.js";

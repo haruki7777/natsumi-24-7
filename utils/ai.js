@@ -1,81 +1,127 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-let aiInstance = null;
+let genAI = null;
 let currentKey = null;
+let lastModelIndex = 0;
 
-// --- Model Distribution Strategy ---
+// --- Model Distribution Strategy (v4.7 Ultimate Core) ---
 const MODELS = [
     "gemini-3-flash-preview",
-    "gemini-3.1-flash-lite-preview",
-    "gemini-3.1-pro-preview"
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-pro"
 ];
 
 const modelCooldowns = new Map();
-const COOLDOWN_DURATION = 60000; // 1 minute cooldown for throttled models
+const COOLDOWN_DURATION = 60000; 
 
 const getValidKey = () => {
-    const k = process.env.MY_GEMINI_API_KEY;
-    if (!k) return null;
-    const cleaned = k.toString().replace(/['"]/g, "").trim();
-    if (cleaned.length > 20) return cleaned;
-    return null;
+    const k = process.env.MY_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!k || k.toString().includes("YOUR_")) return null;
+    return k.toString().replace(/['"]/g, "").trim();
 };
 
 export const getAI = () => {
     const key = getValidKey();
     if (!key) return null;
     
-    if (!aiInstance || currentKey !== key) {
-        aiInstance = new GoogleGenAI({ apiKey: key });
+    if (!genAI || currentKey !== key) {
+        genAI = new GoogleGenerativeAI(key);
         currentKey = key;
     }
-    return aiInstance;
+    return genAI;
 };
 
-/**
- * Executes generateContent with automatic model rotation if quota is exceeded.
- */
 export const generateDistributedContent = async (params) => {
     const ai = getAI();
     if (!ai) throw new Error("NO_API_KEY");
 
     const now = Date.now();
-    const availableModels = MODELS.filter(m => (modelCooldowns.get(m) || 0) < now);
     
-    // Fallback to all models if everything is technically on cooldown
-    const targetModels = availableModels.length > 0 ? availableModels : MODELS;
+    // Priority 1: gemini-3-flash-preview
+    const p1Model = MODELS[0];
+    const p1Cooldown = modelCooldowns.get(p1Model) || 0;
+    
+    let targetModels = [];
+    if (p1Cooldown < now) {
+        targetModels.push({ name: p1Model, index: 0 });
+    }
 
-    for (const model of targetModels) {
+    // Add remaining models in rotation order
+    const restModels = MODELS.slice(1);
+    for (let i = 0; i < restModels.length; i++) {
+        const idx = ((lastModelIndex % restModels.length) + i) % restModels.length;
+        const actualIdx = idx + 1;
+        const mName = MODELS[actualIdx];
+        if ((modelCooldowns.get(mName) || 0) < now) {
+            targetModels.push({ name: mName, index: actualIdx });
+        }
+    }
+
+    // Fallback if all strictly non-cooldown models are unavailable
+    if (targetModels.length === 0) {
+        targetModels = MODELS.map((name, index) => ({ name, index }));
+    }
+
+    for (const modelRef of targetModels) {
+        const modelName = modelRef.name;
         try {
-            console.log(`[AI] Attempting response with model: ${model}`);
-            const result = await ai.models.generateContent({
-                ...params,
-                model: model
+            console.log(`[AI] Attempting ${modelName} (Load Balanced)`);
+            const apiModel = ai.getGenerativeModel({ 
+                model: modelName,
+                systemInstruction: params.config?.systemInstruction
             });
-            return result;
-        } catch (err) {
-            const errorMessage = err.message || JSON.stringify(err);
             
-            // If Rate Limited (429) or Quota Exceeded
-            if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("quota")) {
-                console.warn(`[AI] Model ${model} is throttled. Switching...`);
-                modelCooldowns.set(model, Date.now() + COOLDOWN_DURATION);
-                continue; // Try the next available model
+            const result = await apiModel.generateContent({
+                contents: params.contents,
+                generationConfig: {
+                    temperature: params.config?.temperature ?? 0.8,
+                    maxOutputTokens: 512,
+                }
+            });
+
+            const response = await result.response;
+            lastModelIndex = modelRef.index; // Update successfully used model index
+            
+            let responseText = "";
+            try {
+                responseText = response.text();
+            } catch (safeErr) {
+                responseText = "흥, 나츠미가 대답해주기 싫은 질문이네! (세이프티 필터 작동)";
+                console.warn(`[AI] Safety block triggered for ${modelName}`);
+            }
+
+            return {
+                text: responseText,
+            };
+        } catch (err) {
+            const errorMessage = (err.message || String(err)).toLowerCase();
+            
+            if (errorMessage.includes("429") || errorMessage.includes("quota")) {
+                console.warn(`[AI] ${modelName} Quota Exceeded. Cooldown initiated.`);
+                modelCooldowns.set(modelName, Date.now() + COOLDOWN_DURATION);
+                continue; 
             }
             
-            // Re-throw if it's a safety block or other terminal error
+            if (errorMessage.includes("500") || errorMessage.includes("503") || errorMessage.includes("404")) {
+                console.warn(`[AI] ${modelName} Service/Found Error (${errorMessage}). Switching...`);
+                modelCooldowns.set(modelName, Date.now() + COOLDOWN_DURATION); // Also cooldown for 404 to avoid spam
+                continue;
+            }
+
             throw err;
         }
     }
 
-    throw new Error("ALL_MODELS_QUOTA_EXCEEDED");
+    throw new Error("ALL_MODELS_FAILED");
 };
 
 export const getEmotion = () => {
     const hour = new Date().getHours();
-    if (hour >= 0 && hour < 5) return "귀찮음";
-    if (hour >= 5 && hour < 10) return "기쁨";
-    if (hour >= 10 && hour < 17) return "츤츤";
-    if (hour >= 17 && hour < 21) return "사랑";
-    return "슬픔";
+    if (hour >= 0 && hour < 5) return "졸려서 투덜대는";
+    if (hour >= 5 && hour < 10) return "들떠 있는";
+    if (hour >= 10 && hour < 17) return "심술 궂은";
+    if (hour >= 17 && hour < 21) return "조금은 상냥해진";
+    return "외로운 척하는";
 };

@@ -58,13 +58,24 @@ export default {
     if (message.author.bot) return;
 
     const content = (message.content || "").trim();
-    const isMentioned = message.mentions.has(client.user.id);
     const lowerContent = content.toLowerCase();
     
-    // Explicit callword check
+    // Debug log for troubleshooting (can be seen in dashboard)
+    // console.log(`[MessageLog] From: ${message.author.username} | Content: ${content.substring(0, 20)}${content.length > 20 ? '...' : ''}`);
+
+    const isMentioned = message.mentions.has(client.user.id);
     const isCalled = isMentioned || (content.length > 0 && CALLWORDS.some(word => lowerContent.includes(word.toLowerCase())));
 
-    // Optimization: Return early if the bot doesn't need to process this message
+    // 4. Level System Logic (Move to top so all messages get XP)
+    if (message.guild) {
+        featuresDB.findOne({ GuildID: message.guild.id }).lean().then(levelSystemCheck => {
+            if (levelSystemCheck && levelSystemCheck.LevelSystem?.Enabled) {
+                addXP(message.guild.id, message.author.id, 2, message).catch(() => {});
+            }
+        }).catch(() => {});
+    }
+
+    // Optimization: Return early if the bot doesn't need to process this message for AI response
     if (!isMentioned && !isCalled && lowerContent !== "!ping") return;
 
     // 0. Intent Check (If mentioned but content is empty)
@@ -82,26 +93,30 @@ export default {
         localProcessedCache.delete(first);
     }
     
-    // Fast path for DB deduplication
-    ProcessedMessage.findOneAndUpdate(
-        { messageId: message.id },
-        { $setOnInsert: { messageId: message.id, processedAt: new Date() } },
-        { upsert: true, new: false }
-    ).lean().then(existingDoc => {
-        if (existingDoc) return;
-        // Continue if it was a new document
-    }).catch(() => {});
+    try {
+        // Fast path for DB deduplication
+        const existingDoc = await ProcessedMessage.findOneAndUpdate(
+            { messageId: message.id },
+            { $setOnInsert: { messageId: message.id, processedAt: new Date() } },
+            { upsert: true, new: false }
+        ).lean();
+        
+        if (existingDoc && existingDoc.messageId) return;
+    } catch (e) {
+        if (e.code === 11000) return; // Duplicate key error
+    }
 
-    // 1. Banned Words Monitoring (Fast local check)
-    getBannedWords().then(bannedWords => {
+    // 1. Banned Words Monitoring
+    try {
+        const bannedWords = await getBannedWords();
         if (bannedWords.length > 0 && bannedWords.some(bw => lowerContent.includes(bw.word.toLowerCase()))) {
             if (message.guild && message.channel.permissionsFor(client.user).has("ManageMessages")) {
-                message.delete().catch(() => {});
+                await message.delete().catch(() => {});
             }
-            message.channel.send(`${message.author} 뭐야?! 그런 천박하고 불쾌한 말 하지 마! 혼날 줄 알아!! 떽!!! 💢`).catch(() => {});
+            await message.channel.send(`${message.author} 뭐야?! 그런 천박하고 불쾌한 말 하지 마! 혼날 줄 알아!! 떽!!! 💢`).catch(() => {});
             return;
         }
-    }).catch(() => {});
+    } catch (e) {}
 
     // Legacy ping
     if (lowerContent === "!ping") {
@@ -150,15 +165,6 @@ export default {
             console.error(`[GeminiError]`, error);
             await message.reply("...흥, 나중에 얘기해!").catch(() => {});
         }
-    }
-
-    // 4. Level System Logic (Fire and forget for speed)
-    if (message.guild) {
-        featuresDB.findOne({ GuildID: message.guild.id }).lean().then(levelSystemCheck => {
-            if (levelSystemCheck && levelSystemCheck.LevelSystem?.Enabled) {
-                addXP(message.guild.id, message.author.id, 2, message).catch(() => {});
-            }
-        }).catch(() => {});
     }
   },
 };

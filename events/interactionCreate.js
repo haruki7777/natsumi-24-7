@@ -20,10 +20,15 @@ export default {
     // Slash Command Handling
     if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) {
       const startTime = Date.now();
-      console.log(`[InteractionLog] Command: ${interaction.commandName} | User: ${interaction.user.username}`);
-      const command = client.commands.get(interaction.commandName);
+      const commandName = interaction.commandName;
+      console.log(`[InteractionLog] Command: ${commandName} | User: ${interaction.user.username}#${interaction.user.discriminator} [${interaction.user.id}]`);
+      
+      const command = client.commands.get(commandName);
       if (!command) {
-          console.warn(`[InteractionLog] Command not found in client.commands: ${interaction.commandName}`);
+          console.warn(`[InteractionLog] Command not found in client.commands: ${commandName}. Available: ${[...client.commands.keys()].join(', ')}`);
+          if (interaction.isRepliable()) {
+              await interaction.reply({ content: `**흥! '${commandName}'(이)라는 건 나츠미가 모르는 명령어거든? (명령어 로딩 오류)**`, ephemeral: true }).catch(() => {});
+          }
           return;
       }
 

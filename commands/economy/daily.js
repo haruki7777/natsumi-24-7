@@ -1,17 +1,18 @@
 // Commands/* 폴더에 넣어주세요
 
 const moneycooltime = "86400"; //출석체크 명령어 쿨타임을 정해주세요 | 1초 = 1
-const moneygiveamount = 5000; //출석체크 명령어를 사용하면 받을 돈을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
+const moneygiveamount = 2000; // 2000원 지급
 
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import dailycheck_Schema from "../../models/dailycheck.js";
 import dobak_Schema from "../../models/dobak.js";
+import { addXP } from "../../events/levels.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("출석체크")
     .setDescription(
-      `출석체크를 하고 도박을 할 수 있는 돈 ${moneygiveamount}원을 드린다냥`
+      `출석체크를 하고 돈 ${moneygiveamount.toLocaleString()}원과 경험치를 드린다냥!`
     ),
   /**
    *
@@ -44,6 +45,11 @@ export default {
             }),
         ],
       });
+    }
+
+    // 1. Give XP
+    if (interaction.guildId) {
+        await addXP(interaction.guildId, interaction.user.id, 50, interaction); // Give 50 XP per check-in
     }
 
     if (dailycheck_find) {
@@ -86,23 +92,29 @@ export default {
 
     const embed = new EmbedBuilder()
       .setColor("Green")
+      .setTitle("📅 나츠미의 출석체크!")
       .setDescription(
         `**${
           (dailycheck_find?.count || 0) + 1
-        }번 째 출석체크를 완료하여 \`${moneygiveamount.toLocaleString(
-          "ko-KR"
-        )}\`원을 지급했다냥!**`
+        }일 째 출석체크를 완료했다냥!**\n\n💵 **지급 금액:** \`${moneygiveamount.toLocaleString()}\`원\n✨ **경험치:** \`50 XP\``
       )
       .addFields({
-        name: "잔액",
-        value: `${currentMoney.toLocaleString("ko-KR")}원`,
+        name: "현재 잔액",
+        value: `\`${currentMoney.toLocaleString()}\`원`,
+        inline: true
+      })
+      .addFields({
+        name: "총 출석 일수",
+        value: `\`${(dailycheck_find?.count || 0) + 1}\`일`,
+        inline: true
       })
       .setAuthor({
         name: `${interaction.user.tag}`,
         iconURL: `${interaction.user.displayAvatarURL({
           dynamic: true,
         })}`,
-      });
+      })
+      .setTimestamp();
     interaction.editReply({ embeds: [embed] });
   },
 };

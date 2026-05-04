@@ -9,7 +9,7 @@ export default model("Features", new Schema({
         },
         Background: {
             type: String,
-            default: "https://cdn.discordapp.com/attachments/965674056080826368/1003622130921001040/background.png"
+            default: "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop"
         }
     }
 }))

@@ -13,11 +13,13 @@
   "dependencies": {
     "@google/genai": "^1.51.0",
     "@google/generative-ai": "^0.24.1",
+    "@napi-rs/canvas": "^1.0.0",
     "@tailwindcss/vite": "^4.2.4",
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",
     "@vitejs/plugin-react": "^6.0.1",
     "axios": "^1.15.2",
+    "canvacord": "^6.0.4",
     "clsx": "^2.1.1",
     "discord-html-transcripts": "^3.1.4",
     "discord.js": "^14.9.0",
