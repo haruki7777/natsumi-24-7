@@ -8,7 +8,8 @@
     "start": "tsx server.ts",
     "dev": "tsx server.ts",
     "lint": "eslint .",
-    "build": "vite build"
+    "build": "vite build",
+    "bot:prod": "vite build && tsx server.ts"
   },
   "dependencies": {
     "@google/genai": "^1.51.0",

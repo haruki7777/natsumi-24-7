@@ -10,6 +10,7 @@ const CALLWORDS = ["나츠미", "나쯔미", "낫쯔미", "츠미짱", "츠미�
 
 let bannedWordsCache = null;
 let learnedDataCache = null;
+const levelFeatureCache = new Map();
 const CACHE_TTL = 300000; // 5 minutes
 
 let lastBannedWordsUpdate = 0;
@@ -41,6 +42,22 @@ async function getLearnedData() {
     }
 }
 
+async function isLevelSystemEnabled(guildId) {
+    const cached = levelFeatureCache.get(guildId);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+        return cached.enabled;
+    }
+
+    try {
+        const feature = await featuresDB.findOne({ GuildID: guildId }).select("LevelSystem.Enabled").lean();
+        const enabled = Boolean(feature?.LevelSystem?.Enabled);
+        levelFeatureCache.set(guildId, { enabled, timestamp: Date.now() });
+        return enabled;
+    } catch (e) {
+        return cached?.enabled || false;
+    }
+}
+
 // In-memory cache for message deduplication (LRU style)
 const localProcessedCache = new Set();
 const MAX_CACHE_SIZE = 500;
@@ -68,8 +85,8 @@ export default {
 
     // 4. Level System Logic (Move to top so all messages get XP)
     if (message.guild) {
-        featuresDB.findOne({ GuildID: message.guild.id }).lean().then(levelSystemCheck => {
-            if (levelSystemCheck && levelSystemCheck.LevelSystem?.Enabled) {
+        isLevelSystemEnabled(message.guild.id).then(enabled => {
+            if (enabled) {
                 addXP(message.guild.id, message.author.id, 2, message).catch(() => {});
             }
         }).catch(() => {});

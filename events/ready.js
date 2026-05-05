@@ -10,9 +10,9 @@ export default {
         if(number == list.length) number = 0
         client.user.setActivity(list[number],{
             type: ActivityType.Playing
-        })
+        }).catch(() => {})
         number++
-    }, 10000)
+    }, 60000)
     console.log(`${client.user.tag} 봇 이 준비되었습니다.`)
   },
 };

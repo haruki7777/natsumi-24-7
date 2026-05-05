@@ -1,6 +1,6 @@
 import { model, Schema } from 'mongoose';
 
-export default model("Features", new Schema({
+const FeaturesSchema = new Schema({
     GuildID: String,
     LevelSystem: {
         Enabled: {
@@ -12,4 +12,8 @@ export default model("Features", new Schema({
             default: "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop"
         }
     }
-}))
+});
+
+FeaturesSchema.index({ GuildID: 1 }, { unique: true });
+
+export default model("Features", FeaturesSchema)
