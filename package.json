@@ -8,11 +8,10 @@
     "start": "tsx server.ts",
     "dev": "tsx server.ts",
     "lint": "eslint .",
-    "build": "vite build",
-    "bot:prod": "vite build && tsx server.ts"
+    "build": "vite build"
   },
   "dependencies": {
-    "@google/genai": "^1.51.0",
+    "@google/genai": "^1.52.0",
     "@google/generative-ai": "^0.24.1",
     "@napi-rs/canvas": "^1.0.0",
     "@tailwindcss/vite": "^4.2.4",

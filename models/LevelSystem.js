@@ -1,6 +1,6 @@
 import { model, Schema } from 'mongoose';
 
-const LevelSystemSchema = new Schema({
+export default model("LevelSystem", new Schema({
     GuildID: String,
     UserID: String,
     xp: {
@@ -11,9 +11,4 @@ const LevelSystemSchema = new Schema({
         type: Number,
         default: 1,
     },
-});
-
-LevelSystemSchema.index({ GuildID: 1, UserID: 1 }, { unique: true });
-LevelSystemSchema.index({ GuildID: 1, level: -1, xp: -1 });
-
-export default model("LevelSystem", LevelSystemSchema)
+}))

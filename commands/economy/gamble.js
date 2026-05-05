@@ -1,137 +1,53 @@
-const min_winrate = 10; //도박 최소 확률을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
-const max_winrate = 55; //도박 최대 확률을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
-
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import dobak_Schema from "../../models/dobak.js";
-import { addXP } from "../../events/levels.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("도박")
-    .setDescription("도박을 한다냥!")
+    .setName("광산")
+    .setDescription("전설의 광산에서 대박을 노리고 곡괭이를 휘둘러보자냥!")
     .addIntegerOption((f) =>
       f
         .setName("금액")
-        .setDescription("베팅하실 금액을 입력해 주라냥")
-        .setMinValue(1)
+        .setDescription("채굴 장비 대여료(베팅금)를 입력해 주라냥")
+        .setMinValue(100)
         .setRequired(true)
     ),
   /**
-   *
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    await interaction.deferReply();
-    const dobak_find = await dobak_Schema.findOne({
-      userid: interaction.user.id,
-    });
-    if (!dobak_find) {
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription(
-              `${interaction.user.username}님! 도박 데이터가 존재하지 않다냥!\n\`/돈받기\` 명령어로 돈을 흭득한 후 다시 시도해라냥!!`
-            )
-            .setColor("Red")
-            .setAuthor({
-              name: `${interaction.user.tag}`,
-              iconURL: `${interaction.user.displayAvatarURL({
-                dynamic: true,
-              })}`,
-            }),
-        ],
-      });
-    }
-    if (dobak_find.money < 10000) {
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription(
-              `${interaction.user.username}님! 도박을 하려면 최소 **10,000원** 이상이 있어야 한다냥!\n\`/출석체크\`로 돈을 더 모아주라냥!`
-            )
-            .setColor("Red")
-            .setAuthor({
-              name: `${interaction.user.tag}`,
-              iconURL: `${interaction.user.displayAvatarURL({
-                dynamic: true,
-              })}`,
-            }),
-        ],
-      });
-    }
-
     const bettingMoney = interaction.options.getInteger("금액");
-    if (dobak_find.money < bettingMoney) {
-      return interaction.editReply({
-        embeds: [
-          new EmbedBuilder()
-            .setDescription(
-              `${interaction.user.username}님! 보유중인 잔액이 부족하다냥 \`/돈받기\` 또는 \`/출석체크\` 명령어로 돈을 흭득한 후 다시 시도해라냥!`
-            )
-            .setColor("Red")
-            .setAuthor({
-              name: `${interaction.user.tag}`,
-              iconURL: `${interaction.user.displayAvatarURL({
-                dynamic: true,
-              })}`,
-            }),
-        ],
-      });
-    }
-    const random_number = Math.floor(Math.random() * (100 - 1 + 1)) + 1;
-    const winrate =
-      Math.floor(Math.random() * (max_winrate - min_winrate + 1)) + min_winrate;
+    const userData = await dobak_Schema.findOne({ userid: interaction.user.id });
 
-    // Award XP
-    if (interaction.guildId) {
-       const xpAmount = winrate > random_number ? 20 : 5;
-       await addXP(interaction.guildId, interaction.user.id, xpAmount, interaction);
+    if (!userData) {
+        return interaction.reply({
+            content: "💰 **데이터가 없다냥!** `/출석체크`로 자본금을 먼저 마련해라냥!",
+            ephemeral: true
+        });
     }
 
-    if (winrate > random_number) {
-      await dobak_Schema.updateOne(
-        { userid: interaction.user.id },
-        {
-          money: dobak_find.money + bettingMoney,
-        }
-      );
-      const embed = new EmbedBuilder()
-        .setColor("Green")
-        .setAuthor({
-          name: `${interaction.user.tag}`,
-          iconURL: `${interaction.user.displayAvatarURL({
-            dynamic: true,
-          })}`,
-        })
-        .setDescription(
-          `\`${winrate}%\` 확률로 승리하여 \`${bettingMoney.toLocaleString(
-            "ko-KR"
-          )}\`원을 지급했다냥.`
-        );
-      interaction.editReply({ embeds: [embed] });
-    } else {
-      await dobak_Schema.updateOne(
-        { userid: interaction.user.id },
-        {
-          money: dobak_find.money - bettingMoney,
-        }
-      );
-      const embed = new EmbedBuilder()
-        .setColor("Red")
-        .setAuthor({
-          name: `${interaction.user.tag}`,
-          iconURL: `${interaction.user.displayAvatarURL({
-            dynamic: true,
-          })}`,
-        })
-        .setDescription(
-          `\`${
-            100 - winrate
-          }%\` 확률로 패배하여 \`${bettingMoney.toLocaleString(
-            "ko-KR"
-          )}\`원이 회수되었다냥 ㅋㅋㅋㅋ`
-        );
-      interaction.editReply({ embeds: [embed] });
+    if (userData.money < bettingMoney) {
+        return interaction.reply({
+            content: `❌ **잔액 부족이다냥!** 현재 잔액: \`${userData.money.toLocaleString()}\`원`,
+            ephemeral: true
+        });
     }
+
+    const embed = new EmbedBuilder()
+        .setTitle("⛏️ 나츠미의 비밀 광산 입구")
+        .setDescription(`**${interaction.user.username}**님, 채굴 준비 완료다냥!\n\n현재 대여한 장비 등급: \`${bettingMoney.toLocaleString()}원\` 상당\n\n아래 버튼을 눌러서 깊숙이 파들어가 봐라냥! 무엇이 나올지 기대된다냥~`)
+        .setColor("#34495E")
+        .setThumbnail("https://cdn-icons-png.flaticon.com/512/3062/3062412.png")
+        .setFooter({ text: "버튼을 누르면 바로 채굴이 시작된다냥!" });
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`MiningDig_${interaction.user.id}_${bettingMoney}`)
+            .setLabel("곡괭이 휘두르기!")
+            .setEmoji("⛏️")
+            .setStyle(ButtonStyle.Primary)
+    );
+
+    await interaction.reply({ embeds: [embed], components: [row] });
   },
 };

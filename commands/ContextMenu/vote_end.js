@@ -16,17 +16,25 @@ export default {
     
     const message = interaction.targetMessage;
 
-    // Check if it's a vote message (Check if reactions exist or if it's from current client)
-    // We expect 👍 and 👎 reactions
-    await message.fetch();
-    const good_count = (message.reactions.cache.get("👍")?.count || 1) - 1;
-    const bad_count = (message.reactions.cache.get("👎")?.count || 1) - 1;
+    // Strict Validation: Check if it's a valid Natsumi vote message
+    const isBotAuthor = message.author.id === interaction.client.user.id;
+    const originalEmbed = message.embeds[0];
+    const isVoteTitle = originalEmbed?.data?.title === "📊 나츠미의 실시간 투표";
 
-    if (good_count === 0 && bad_count === 0 && !message.embeds[0]) {
+    if (!isBotAuthor || !isVoteTitle) {
       return interaction.editReply({
-        content: `**투표 메시지가 아니거나 아무도 참여하지 않았다냥!**`,
+        content: `❌ **이 메시지는 나츠미가 생성한 투표 메시지가 아니다냥!**\n나츠미의 \`/투표\` 명령어로 만든 메시지에만 이 기능을 사용할 수 있다냥.`,
       });
     }
+
+    const fetchedMessage = await message.fetch(true);
+    
+    // Explicitly find the reactions to avoid cache key issues with unicode
+    const goodReaction = fetchedMessage.reactions.cache.find(r => r.emoji.name === "👍");
+    const badReaction = fetchedMessage.reactions.cache.find(r => r.emoji.name === "👎");
+
+    const good_count = Math.max(0, (goodReaction?.count || 0) - (goodReaction?.me ? 1 : 0));
+    const bad_count = Math.max(0, (badReaction?.count || 0) - (badReaction?.me ? 1 : 0));
 
     const total = good_count + bad_count;
     
@@ -37,8 +45,7 @@ export default {
     // Remove reactions
     await message.reactions.removeAll().catch(() => {});
 
-    const originalEmbed = message.embeds[0];
-    const topic = originalEmbed?.description?.split('\n')[0] || "알 수 없는 주제";
+    const topic = originalEmbed?.description?.split('\n')[0] || "**[주제 정보 없음]**";
 
     const embed = new EmbedBuilder()
       .setTitle("🏁 투표 결과 발표")

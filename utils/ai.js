@@ -77,7 +77,7 @@ export const generateDistributedContent = async (params) => {
                 contents: params.contents,
                 generationConfig: {
                     temperature: params.config?.temperature ?? 0.8,
-                    maxOutputTokens: 512,
+                    maxOutputTokens: 2048,
                 }
             });
 

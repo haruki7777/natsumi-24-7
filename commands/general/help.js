@@ -8,28 +8,38 @@ import {
   StringSelectMenuBuilder,
   ActionRowBuilder,
 } from "discord.js";
+import { getTranslation } from "../../utils/i18n.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("도움말")
-    .setDescription("도움말을 보여준다냥"),
+    .setDescription("도움말을 보여준다냥")
+    .setNameLocalizations({
+        "en-US": "help",
+        "ja": "ヘルプ"
+    })
+    .setDescriptionLocalizations({
+        "en-US": "Show help commands",
+        "ja": "ヘルプを表示します"
+    }),
 
   async execute(interaction, client) {
     await interaction.deferReply();
+    const locale = interaction.locale;
 
     const command_folder_name = "commands";
     const select = new StringSelectMenuBuilder()
       .setCustomId("help_category")
-      .setPlaceholder("카테고리를 선택해 주세요")
+      .setPlaceholder(getTranslation(locale, "help.placeholder"))
       .addOptions([
         {
-          label: "메인",
+          label: getTranslation(locale, "help.main"),
           value: "main",
           description: "메인 화면으로 돌아갑니다.",
           emoji: "🏠",
         },
         {
-          label: "소개",
+          label: getTranslation(locale, "help.about"),
           value: "about",
           description: "봇 소개를 확인합니다.",
           emoji: "📋",
@@ -37,34 +47,52 @@ export default {
       ]);
 
     const embeds = {};
-    const categories = readdirSync(path.join(process.cwd(), command_folder_name), { withFileTypes: true });
+    const categoriesDir = readdirSync(path.join(process.cwd(), command_folder_name), { withFileTypes: true });
 
-    for (const categoryEntry of categories) {
+    const categoryLabels = {
+      "general": "기본 명령어",
+      "fun": "재미/놀이",
+      "economy": "도박/경제",
+      "util": "유틸리티",
+      "mod": "관리자",
+      "NSFW": "NSFW (🔞)",
+      "SFW": "SFW (애니)",
+      "ticket": "티켓 시스템"
+    };
+
+    const categoryEmojis = {
+      "general": "✨",
+      "fun": "🎊",
+      "economy": "💰",
+      "util": "⚙️",
+      "mod": "🛡️",
+      "NSFW": "🔞",
+      "SFW": "🌸",
+      "ticket": "🎫"
+    };
+
+    for (const categoryEntry of categoriesDir) {
       if (!categoryEntry.isDirectory()) continue;
       const category = categoryEntry.name;
       if (category.startsWith("broken_") || category === "ContextMenu") continue;
       
+      const label = categoryLabels[category] || category;
+      const emoji = categoryEmojis[category] || "📁";
+
       embeds[category] = new EmbedBuilder()
         .setThumbnail(client.user.displayAvatarURL())
-        .setTitle(`📂 ${category} 카테고리`)
+        .setTitle(`${emoji} ${label}`)
         .setColor("Orange")
         .setTimestamp();
 
-      const files = readdirSync(path.join(process.cwd(), command_folder_name, category)).filter(file => file.endsWith(".js"));
+      const categoryCommands = client.commands.filter(cmd => cmd.category === category);
 
-      if (files.length > 0) {
+      if (categoryCommands.size > 0) {
         select.addOptions({
           value: category,
-          label: category,
-          description: `${category} 관련 명령어를 확인합니다.`,
-          emoji: "📁",
-        });
-
-        // Use already loaded commands from client
-        const categoryCommands = client.commands.filter(cmd => {
-            // This is a bit heuristic, but since we know where they were loaded from
-            // We can check if the file existed in that category
-            return files.includes(cmd.data.name + ".js") || files.includes(cmd.data.name + ".ts");
+          label: label,
+          description: `${label} 관련 명령어를 확인합니다.`,
+          emoji: emoji,
         });
 
         categoryCommands.forEach(command => {
@@ -79,21 +107,21 @@ export default {
 
     const startTime = Math.floor(client.readyAt / 1000);
     embeds["main"] = new EmbedBuilder()
-      .setTitle("🐱 나츠미 도움말")
-      .setDescription("> 냐하핫! 나츠미 도움말 페이지다냥! \n> 봇 패치 및 공지사항은 서포트 서버에서 확인해주라냥.\n> 아래 메뉴를 열면 카테고리별 명령어를 볼 수 있다냥!")
+      .setTitle(getTranslation(locale, "help.title"))
+      .setDescription(getTranslation(locale, "help.desc"))
       .setImage('https://media.discordapp.net/attachments/1034725786181193785/1054998382558584832/CFB8F7C5-4DA9-46CC-8B6F-348EE6A3906B.png')
       .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
       .addFields(
-        { name: "업타임", value: `<t:${startTime}:R>`, inline: true },
-        { name: "지연 시간", value: `${client.ws.ping}ms`, inline: true },
-        { name: "서버 수", value: `${client.guilds.cache.size} 서버`, inline: true }
+        { name: getTranslation(locale, "help.uptime"), value: `<t:${startTime}:R>`, inline: true },
+        { name: getTranslation(locale, "help.latency"), value: `${client.ws.ping}ms`, inline: true },
+        { name: getTranslation(locale, "help.servers"), value: `${client.guilds.cache.size}`, inline: true }
       )
       .setColor("Yellow");
 
     embeds["about"] = new EmbedBuilder()
       .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
-      .setTitle(`⛩️ 봇 소개`)
-      .setDescription("> 냐하핫! 나츠미는 계속 발전하고 있다냥! \n> **제작자: 하루키#3081** \n> 도움이 필요하면 서포트 서버로 와주라냥!")
+      .setTitle(`⛩️ ${getTranslation(locale, "help.about")}`)
+      .setDescription("> 냐하핫! 나츠미는 계속 발전하고 있다냥! \n> **Developer: Haruki** \n> If you need help, come to the support server, nya!")
       .setColor("Orange")
       .setImage('https://media.discordapp.net/attachments/1034725786181193785/1054998382558584832/CFB8F7C5-4DA9-46CC-8B6F-348EE6A3906B.png')
       .setTimestamp();

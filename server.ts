@@ -5,7 +5,6 @@ import fs from "fs";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import mongoose from "mongoose";
-import { monitorEventLoopDelay } from "perf_hooks";
 import { 
   Client, 
   GatewayIntentBits, 
@@ -24,19 +23,12 @@ dotenv.config();
 interface ExtendedClient extends Client {
   commands: Collection<string, any>;
   buttons: Collection<string, any>;
-  instanceId?: string;
 }
 
 async function startServer() {
   console.log(">>> [BOOT] starting startServer() function...");
   const app = express();
-  const PORT = Number(process.env.PORT || 3000);
-  const HOST = process.env.HOST || "0.0.0.0";
-  const LOG_LIMIT = Number(process.env.LOG_LIMIT || 100);
-  const SELF_PING_URL = process.env.SELF_PING_URL || `http://127.0.0.1:${PORT}/ping`;
-  const LOG_PINGS = process.env.LOG_PINGS === "true";
-  const SELF_PING_ENABLED = process.env.SELF_PING_ENABLED !== "false";
-  const CACHE_SWEEP_INTERVAL_MS = Number(process.env.CACHE_SWEEP_INTERVAL_MS || 600000);
+  const PORT = 3000;
 
   const instanceId = Math.random().toString(36).substring(2, 8);
   let botStatus = "Offline";
@@ -50,18 +42,14 @@ async function startServer() {
   const geminiKey = process.env.MY_GEMINI_API_KEY;
   const clientId = process.env.ID?.replace(/['"]/g, "").trim();
   const mongoUri = process.env.MONGOOSE?.replace(/['"]/g, "").trim();
-  const eventLoopDelay = monitorEventLoopDelay({ resolution: 20 });
-  eventLoopDelay.enable();
 
   const addLog = (msg: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const entry = `[${timestamp}] ${msg}`;
     logs.push(entry);
-    if (logs.length > LOG_LIMIT) logs.shift();
+    if (logs.length > 100) logs.shift(); 
     console.log(entry);
   };
-
-  const getEventLoopLagMs = () => Math.round(eventLoopDelay.mean / 1_000_000);
 
   // --- Discord Bot Initialization ---
   let currentIntents = new IntentsBitField();
@@ -114,20 +102,22 @@ async function startServer() {
                 
                 const json = typeof command.data.toJSON === 'function' ? command.data.toJSON() : command.data;
                 
-                // Validate payload and avoid duplicates
                 if (!json.name) {
                     addLog(`[Warning] Command in ${file} missing name.`);
                     continue;
                 }
 
-                if (json.type === 1 && !json.description) {
+                const isSlash = !json.type || json.type === 1;
+                if (isSlash && !json.description) {
                     addLog(`[Warning] Slash Command ${json.name} in ${file} missing description.`);
                 }
                 
-                addLog(`[Loader] Loading command: ${json.name} (Type: ${json.type || 1}) from ${file}`);
+                addLog(`[Loader] Loaded ${isSlash ? 'Slash' : 'Context'} Command: ${json.name} (Type: ${json.type || 1}) from ${file}`);
 
-                if (commandsJson.some(c => c.name === json.name && c.type === json.type)) {
-                    addLog(`[Warning] Duplicate command detected: ${json.name}. Skipping JSON entry.`);
+                command.category = category;
+
+                if (commandsJson.some(c => c.name === json.name && (c.type || 1) === (json.type || 1))) {
+                    addLog(`[Warning] Duplicate detected: ${json.name}. Skipping JSON entry.`);
                 } else {
                     commandsJson.push(json);
                 }
@@ -194,9 +184,10 @@ async function startServer() {
     if (discordToken && clientId && commandsJsonCache.length > 0) {
       const rest = new REST({ version: "10" }).setToken(discordToken);
       try {
-        addLog(`Registering commands: ${commandsJsonCache.map(c => c.name).join(', ')}`);
+        const commandNames = commandsJsonCache.map(c => `${c.name}(${c.type || 1})`).join(', ');
+        addLog(`[Discord] Registering ${commandsJsonCache.length} commands: ${commandNames}`);
         await rest.put(Routes.applicationCommands(clientId), { body: commandsJsonCache });
-        addLog(`Successfully registered ${commandsJsonCache.length} slash commands.`);
+        addLog(`[Discord] Successfully registered commands.`);
       } catch (error: any) {
         let errMsg = error.message;
         const details = error.errors || (error.rawError && error.rawError.errors);
@@ -213,18 +204,19 @@ async function startServer() {
       botStatus = "Online";
       botPing = readyClient.ws.ping;
       botUptime = Date.now();
-      addLog(`[System] Natsumi v5.3.1 Ultimate | Ready as ${readyClient.user.tag}`);
-      addLog(`[Config] 100+ Guilds Optimized | Economy: KST 09:00 AM Sync (v5.3.1)`);
+      addLog(`[System] Natsumi v6.3.1 Ultimate | Ready as ${readyClient.user.tag}`);
+      addLog(`[Config] 100+ Guilds Optimized | Fishing Content Expansion (120+ Items)`);
       
       if (!currentIntents.has(GatewayIntentBits.MessageContent)) {
           addLog("!!! CRITICAL: Message Content Intent missing !!!");
       }
       
-      await registerSlashCommands();
-    });
-
-    c.on(Events.MessageCreate, () => {
-      messageCount++;
+      try {
+        await registerSlashCommands();
+        addLog("[Discord] Slash Command Sync Complete.");
+      } catch (err: any) {
+        addLog(`[Discord] Sync Failed: ${err.message}`);
+      }
     });
 
     c.on(Events.Error, (e) => {
@@ -242,14 +234,6 @@ async function startServer() {
 
     c.on("shardDisconnect", (event, id) => {
       addLog(`[Shard ${id}] Disconnected: ${event.reason || "Unknown reason"}`);
-    });
-
-    c.on("shardReconnecting", (id) => {
-      addLog(`[Shard ${id}] Reconnecting...`);
-    });
-
-    c.on("shardResume", (id, replayedEvents) => {
-      addLog(`[Shard ${id}] Resumed. Replayed events: ${replayedEvents}`);
     });
   };
 
@@ -339,44 +323,33 @@ async function startServer() {
     addLog(`Uncaught Exception: ${err.message}`);
   });
 
-  // Lightweight sweep. Discord.js sweepers handle most cache cleanup already;
-  // avoid clearing every guild in one burst because that can delay heartbeats.
-  setInterval(async () => {
+  // Balanced GC and System Sweep (Every 5 minutes)
+  setInterval(() => {
     try {
       if (client && client.isReady && client.isReady()) {
-        const guilds = [...client.guilds.cache.values()];
-        for (const guild of guilds) {
-          guild.messages?.cache?.clear?.();
-          guild.voiceStates?.cache?.clear?.();
-          await new Promise((resolve) => setTimeout(resolve, 25));
-        }
+        client.guilds.cache.forEach((guild: any) => {
+           guild.messages.cache.clear();
+           guild.voiceStates.cache.clear();
+        });
+        import("./utils/cache.js").then(m => m.clearCache()).catch(() => {});
       }
       if (global.gc) global.gc();
-      eventLoopDelay.reset();
-      import("./utils/cache.js").then(m => m.clearCache()).catch(() => {});
     } catch (e: any) {}
-  }, CACHE_SWEEP_INTERVAL_MS);
+  }, 300000);
 
   // --- MongoDB Connection ---
   if (mongoUri) {
-    let isConnectingToMongo = false;
-
     const connectDB = async () => {
-      if (isConnectingToMongo || mongoose.connection.readyState === 1) return;
-      isConnectingToMongo = true;
       try {
         await mongoose.connect(mongoUri, {
           serverSelectionTimeoutMS: 10000,
           socketTimeoutMS: 45000,
           family: 4,
-          maxPoolSize: Number(process.env.MONGO_MAX_POOL_SIZE || 10),
         });
         addLog("MongoDB Connected successfully.");
       } catch (err: any) {
         addLog(`MongoDB Initial Connection Failed: ${err.message}`);
         setTimeout(connectDB, 5000); // Retry after 5s
-      } finally {
-        isConnectingToMongo = false;
       }
     };
 
@@ -386,7 +359,7 @@ async function startServer() {
 
     mongoose.connection.on("disconnected", () => {
       addLog("MongoDB Disconnected. Attempting to reconnect...");
-      setTimeout(connectDB, 5000);
+      connectDB();
     });
 
     connectDB();
@@ -401,9 +374,7 @@ async function startServer() {
 
   // --- API Routes ---
   app.get("/ping", (req, res) => {
-    if (LOG_PINGS) {
-      console.log(`[Ping] Received ping from ${req.headers['x-forwarded-for'] || req.ip}`);
-    }
+    console.log(`[Ping] Received ping from ${req.headers['x-forwarded-for'] || req.ip}`);
     res.status(200).send("Pong! I am awake.");
   });
 
@@ -416,10 +387,7 @@ async function startServer() {
       lastError,
       logs: logs.slice().reverse(),
       tag: client?.user?.tag || "N/A",
-      guilds: client?.guilds?.cache?.size ?? 0,
-      eventLoopLagMs: getEventLoopLagMs(),
-      memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
-      engine: "v5.3.1 Ultimate Core",
+      engine: "v6.3.1 Ultimate Core",
     });
   });
 
@@ -427,7 +395,6 @@ async function startServer() {
     try {
       import("./utils/cache.js").then(m => m.clearCache());
       if (global.gc) global.gc();
-      eventLoopDelay.reset();
       addLog("[System] Manual cache flush and GC triggered.");
       res.json({ success: true, message: "Cache flushed" });
     } catch (e: any) {
@@ -452,19 +419,19 @@ async function startServer() {
 
   console.log(`[Server] Starting instance: ${instanceId}`);
 
-  const server = app.listen(PORT, HOST, () => {
-    console.log(`[${instanceId}] Server running on http://${HOST}:${PORT}`);
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[${instanceId}] Server running on http://localhost:${PORT}`);
     
     // --- Self-Ping Mechanism (Keep Alive) ---
-    if (SELF_PING_ENABLED) {
-      setInterval(async () => {
-        try {
-          await fetch(SELF_PING_URL);
-        } catch (e: any) {
-          addLog(`Self-ping failed: ${e.message}`);
-        }
-      }, 300000);
-    }
+    setInterval(async () => {
+      try {
+        const response = await fetch(`http://localhost:${PORT}/ping`);
+        const text = await response.text();
+        addLog(`Self-ping successful: ${text}`);
+      } catch (e: any) {
+        addLog(`Self-ping failed: ${e.message}`);
+      }
+    }, 300000); 
   });
 
   server.on("error", (e: any) => {
