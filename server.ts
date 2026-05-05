@@ -41,6 +41,10 @@ async function startServer() {
   const SELF_PING_ENABLED = process.env.SELF_PING_ENABLED !== "false";
   const CACHE_SWEEP_INTERVAL_MS = Number(process.env.CACHE_SWEEP_INTERVAL_MS || 300000);
   const HEALTH_SAMPLE_INTERVAL_MS = Number(process.env.HEALTH_SAMPLE_INTERVAL_MS || 60000);
+  const LATENCY_WATCHDOG_ENABLED = process.env.LATENCY_WATCHDOG_ENABLED !== "false";
+  const LATENCY_RECONNECT_PING_MS = Number(process.env.LATENCY_RECONNECT_PING_MS || 3000);
+  const LATENCY_RECONNECT_CONSECUTIVE = Number(process.env.LATENCY_RECONNECT_CONSECUTIVE || 2);
+  const LATENCY_RECONNECT_COOLDOWN_MS = Number(process.env.LATENCY_RECONNECT_COOLDOWN_MS || 600000);
 
   const instanceId = Math.random().toString(36).substring(2, 8);
   let botStatus = "Offline";
@@ -48,6 +52,9 @@ async function startServer() {
   let botUptime = 0;
   let lastError = "";
   let messageCount = 0;
+  let highLatencySamples = 0;
+  let lastLatencyReconnectAt = 0;
+  let reconnectingDiscord = false;
   const logs: string[] = [];
 
   const discordToken = process.env.TOKEN?.replace(/['"]/g, "").trim();
@@ -318,6 +325,32 @@ async function startServer() {
     }
   };
 
+  const reconnectDiscordGateway = async (reason: string) => {
+    if (!discordToken || !client || reconnectingDiscord) return;
+
+    const now = Date.now();
+    if (now - lastLatencyReconnectAt < LATENCY_RECONNECT_COOLDOWN_MS) return;
+
+    reconnectingDiscord = true;
+    lastLatencyReconnectAt = now;
+    botStatus = "Reconnecting";
+    addLog(`[Watchdog] Reconnecting Discord gateway: ${reason}`);
+
+    try {
+      client.destroy();
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await client.login(discordToken);
+      highLatencySamples = 0;
+      addLog("[Watchdog] Discord gateway reconnect requested.");
+    } catch (e: any) {
+      botStatus = "Reconnect Failed";
+      lastError = e.message;
+      addLog(`[Watchdog] Reconnect failed: ${e.message}`);
+    } finally {
+      reconnectingDiscord = false;
+    }
+  };
+
   if (geminiKey) {
       addLog(`MY_GEMINI_API_KEY found`);
   } else {
@@ -356,6 +389,20 @@ async function startServer() {
       const sample = recordRuntimeSample(client);
       if (sample.gatewayPing >= 500 || sample.eventLoopLagMs >= 100 || sample.eventLoopMaxMs >= 1000) {
         addLog(`[Health] WS=${sample.gatewayPing}ms lag=${sample.eventLoopLagMs}/${sample.eventLoopMaxMs}ms memory=${sample.memoryRssMb}MB`);
+      }
+
+      if (!LATENCY_WATCHDOG_ENABLED) return;
+
+      if (sample.gatewayPing >= LATENCY_RECONNECT_PING_MS && sample.eventLoopLagMs < 100) {
+        highLatencySamples++;
+      } else {
+        highLatencySamples = 0;
+      }
+
+      if (highLatencySamples >= LATENCY_RECONNECT_CONSECUTIVE) {
+        reconnectDiscordGateway(`WS ping ${sample.gatewayPing}ms for ${highLatencySamples} samples`).catch((e) => {
+          addLog(`[Watchdog] Reconnect scheduling failed: ${e.message}`);
+        });
       }
     }
   }, HEALTH_SAMPLE_INTERVAL_MS);
