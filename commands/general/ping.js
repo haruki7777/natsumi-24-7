@@ -1,4 +1,8 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import {
+  classifyRuntime,
+  getRuntimeHealth,
+} from "../../utils/runtimeHealth.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -10,6 +14,7 @@ export default {
   async execute(interaction, client) {
     if (interaction.replied || interaction.deferred) return;
     
+    const deferStart = Date.now();
     try {
       await interaction.deferReply();
     } catch (e) {
@@ -17,8 +22,11 @@ export default {
       return;
     }
     
-    const gatewayPing = client.ws.ping;
-    const apiLatency = Date.now() - interaction.createdTimestamp;
+    const apiLatency = Date.now() - deferStart;
+    const dispatchLatency = deferStart - interaction.createdTimestamp;
+    const health = getRuntimeHealth(client);
+    const gatewayPing = health.gatewayPing;
+    const likelyCause = classifyRuntime(health);
     
     let gatewayStatus;
     if (gatewayPing < 150) gatewayStatus = "🟢";
@@ -49,6 +57,15 @@ export default {
           name: `⚡ API 응답 (REST)`,
           value: `**${apiLatency}ms** (${apiStatus})`,
           inline: true,
+        },
+        {
+          name: `처리 대기`,
+          value: `**${dispatchLatency}ms**`,
+          inline: true,
+        },
+        {
+          name: `런타임`,
+          value: `lag ${health.eventLoopLagMs}/${health.eventLoopMaxMs}ms | ${health.memoryRssMb}MB | ${likelyCause}`,
         },
         {
           name: `⏰ 업타임`,

@@ -5,6 +5,11 @@ import fs from "fs";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import mongoose from "mongoose";
+import {
+  getRuntimeHealth,
+  recordRuntimeSample,
+  resetRuntimeLag,
+} from "./utils/runtimeHealth.js";
 import { 
   Client, 
   GatewayIntentBits, 
@@ -28,7 +33,14 @@ interface ExtendedClient extends Client {
 async function startServer() {
   console.log(">>> [BOOT] starting startServer() function...");
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
+  const HOST = process.env.HOST || "0.0.0.0";
+  const LOG_LIMIT = Number(process.env.LOG_LIMIT || 100);
+  const SELF_PING_URL = process.env.SELF_PING_URL || `http://127.0.0.1:${PORT}/ping`;
+  const LOG_PINGS = process.env.LOG_PINGS === "true";
+  const SELF_PING_ENABLED = process.env.SELF_PING_ENABLED !== "false";
+  const CACHE_SWEEP_INTERVAL_MS = Number(process.env.CACHE_SWEEP_INTERVAL_MS || 300000);
+  const HEALTH_SAMPLE_INTERVAL_MS = Number(process.env.HEALTH_SAMPLE_INTERVAL_MS || 60000);
 
   const instanceId = Math.random().toString(36).substring(2, 8);
   let botStatus = "Offline";
@@ -47,7 +59,7 @@ async function startServer() {
     const timestamp = new Date().toLocaleTimeString();
     const entry = `[${timestamp}] ${msg}`;
     logs.push(entry);
-    if (logs.length > 100) logs.shift(); 
+    if (logs.length > LOG_LIMIT) logs.shift();
     console.log(entry);
   };
 
@@ -334,8 +346,19 @@ async function startServer() {
         import("./utils/cache.js").then(m => m.clearCache()).catch(() => {});
       }
       if (global.gc) global.gc();
+      resetRuntimeLag();
+      import("./utils/cache.js").then(m => m.clearCache()).catch(() => {});
     } catch (e: any) {}
-  }, 300000);
+  }, CACHE_SWEEP_INTERVAL_MS);
+
+  setInterval(() => {
+    if (client && client.isReady && client.isReady()) {
+      const sample = recordRuntimeSample(client);
+      if (sample.gatewayPing >= 500 || sample.eventLoopLagMs >= 100 || sample.eventLoopMaxMs >= 1000) {
+        addLog(`[Health] WS=${sample.gatewayPing}ms lag=${sample.eventLoopLagMs}/${sample.eventLoopMaxMs}ms memory=${sample.memoryRssMb}MB`);
+      }
+    }
+  }, HEALTH_SAMPLE_INTERVAL_MS);
 
   // --- MongoDB Connection ---
   if (mongoUri) {
@@ -374,19 +397,26 @@ async function startServer() {
 
   // --- API Routes ---
   app.get("/ping", (req, res) => {
-    console.log(`[Ping] Received ping from ${req.headers['x-forwarded-for'] || req.ip}`);
+    if (LOG_PINGS) {
+      console.log(`[Ping] Received ping from ${req.headers['x-forwarded-for'] || req.ip}`);
+    }
     res.status(200).send("Pong! I am awake.");
   });
 
   app.get("/api/status", (req, res) => {
+    const health = getRuntimeHealth(client);
     res.json({
       status: botStatus,
-      ping: client?.ws?.ping ?? -1,
+      ping: health.gatewayPing,
       uptime: botUptime ? Math.floor((Date.now() - botUptime) / 1000) : 0,
       messageCount,
       lastError,
       logs: logs.slice().reverse(),
       tag: client?.user?.tag || "N/A",
+      guilds: health.guilds,
+      eventLoopLagMs: health.eventLoopLagMs,
+      eventLoopMaxMs: health.eventLoopMaxMs,
+      memoryMb: health.memoryRssMb,
       engine: "v6.3.1 Ultimate Core",
     });
   });
@@ -395,6 +425,7 @@ async function startServer() {
     try {
       import("./utils/cache.js").then(m => m.clearCache());
       if (global.gc) global.gc();
+      resetRuntimeLag();
       addLog("[System] Manual cache flush and GC triggered.");
       res.json({ success: true, message: "Cache flushed" });
     } catch (e: any) {
@@ -419,19 +450,19 @@ async function startServer() {
 
   console.log(`[Server] Starting instance: ${instanceId}`);
 
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[${instanceId}] Server running on http://localhost:${PORT}`);
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`[${instanceId}] Server running on http://${HOST}:${PORT}`);
     
     // --- Self-Ping Mechanism (Keep Alive) ---
-    setInterval(async () => {
-      try {
-        const response = await fetch(`http://localhost:${PORT}/ping`);
-        const text = await response.text();
-        addLog(`Self-ping successful: ${text}`);
-      } catch (e: any) {
-        addLog(`Self-ping failed: ${e.message}`);
-      }
-    }, 300000); 
+    if (SELF_PING_ENABLED) {
+      setInterval(async () => {
+        try {
+          await fetch(SELF_PING_URL);
+        } catch (e: any) {
+          addLog(`Self-ping failed: ${e.message}`);
+        }
+      }, 300000);
+    }
   });
 
   server.on("error", (e: any) => {
