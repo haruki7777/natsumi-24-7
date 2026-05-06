@@ -22,6 +22,8 @@ jobs:
 
       - name: Protect lightweight sync files
         id: protect
+        env:
+          GH_RESTORE_TOKEN: ${{ secrets.GH_RESTORE_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -83,7 +85,11 @@ jobs:
             git config user.email "actions@github.com"
             git add "${sync_files[@]}"
             git commit -m "Restore lightweight sync files"
-            git push origin HEAD:main
+            if [ -n "${GH_RESTORE_TOKEN:-}" ]; then
+              git push "https://x-access-token:${GH_RESTORE_TOKEN}@github.com/haruki7777/natsumi-24-7.git" HEAD:main
+            else
+              git push origin HEAD:main
+            fi
           fi
 
           echo "restored=${restored}" >> "$GITHUB_OUTPUT"
