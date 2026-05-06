@@ -1,4 +1,4 @@
-import { Events } from "discord.js";
+import { Events, EmbedBuilder } from "discord.js";
 import featuresDB from "../models/Features.js";
 import LearnedData from "../models/LearnedData.js";
 import BannedWords from "../models/BannedWords.js";
@@ -76,12 +76,12 @@ export default {
     }
 
     // Optimization: Return early if the bot doesn't need to process this message for AI response
-    if (!isMentioned && !isCalled && lowerContent !== "!ping") return;
+    if (!isMentioned && !isCalled && lowerContent !== "!핑" && lowerContent !== "!ping") return;
 
     // 0. Intent Check (If mentioned but content is empty)
     if (isMentioned && content.length === 0) {
         return message.reply({
-            content: "흥! 멘션만 하면 어쩌라는 거야? 내가 네 머릿속을 읽을 수 있을 줄 알아?\n\n> **도움말:** 나츠미가 단어(츠미야 등)만으로 응답하게 하려면 Discord Developer Portal에서 **Message Content Intent**를 활성화해야 한다냥!",
+            content: "츤! 멘션만 덜렁 보내면 어쩌라는 거야? 내가 네 속마음이라도 꿰뚫어 볼 수 있는 여우인 줄 알아? ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ\n\n> **도움말:** 나츠미가 단어(츠미야 등)만으로 응답하게 하려면 Discord Developer Portal에서 **Message Content Intent**를 활성화해야 한다냥!",
         }).catch(() => {});
     }
 
@@ -119,9 +119,37 @@ export default {
     } catch (e) {}
 
     // Legacy ping
-    if (lowerContent === "!ping") {
-        const instId = client.instanceId || "unknown";
-        return message.reply(`Pong! ${client.ws.ping}ms | ID: ${instId}`).catch(() => {});
+    if (lowerContent === "!핑" || lowerContent === "!ping") {
+        const os = await import("os");
+        const totalMem = (os.totalmem() / (1024 ** 3)).toFixed(1);
+        const freeMem = (os.freemem() / (1024 ** 3)).toFixed(1);
+        const usedMem = (totalMem - freeMem).toFixed(1);
+        const memPercent = ((usedMem / totalMem) * 100).toFixed(1);
+
+        const cpuModel = os.cpus()[0]?.model || "알 수 없음";
+        const cpuCount = os.cpus().length;
+
+        const gatewayPing = client.ws.ping;
+        const gatewayStatus = gatewayPing < 150 ? "🟢" : (gatewayPing < 300 ? "🟠" : "🔴");
+        const apiLatency = Date.now() - message.createdTimestamp;
+        const apiStatus = apiLatency < 300 ? "🟢" : (apiLatency < 600 ? "🟠" : "🔴");
+        const uptime = Math.round(client.readyTimestamp / 1000);
+        
+        const embed = new EmbedBuilder()
+            .setTitle("🦊 Natsumi Vulpine Health Check")
+            .setDescription(`콘콘~! 별로 네가 걱정돼서 보여주는 건 아니거든? 그냥 시스템이 너무 완벽해서 자랑하고 싶을 뿐이야! 착각하면 꼬리로 확 쳐버릴 거야! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
+            .setColor("#FF7F50") 
+            .setThumbnail(client.user.displayAvatarURL())
+            .addFields(
+                { name: "🏮 Core Data", value: `\`\`\`yml\n이름: ${client.user.username}\n버전: v2.2.0 (Vulpine Core)\n상태: 최상 (운영 중)\`\`\``, inline: false },
+                { name: "🍃 Environment", value: `**OS:** ${os.type()}\n**Uptime:** <t:${uptime}:R>`, inline: true },
+                { name: "⚙️ Hardware", value: `**CPU:** ${cpuModel.split(' ')[0]}\n**RAM:** ${usedMem}G / ${totalMem}G`, inline: true },
+                { name: "📡 Network", value: `**WS:** ${gatewayPing}ms (${gatewayStatus})\n**API:** ${apiLatency}ms (${apiStatus})`, inline: true }
+            )
+            .setFooter({ text: "나츠미의 여우 령이 시스템을 보호하고 있어요!" })
+            .setTimestamp();
+
+        return message.reply({ embeds: [embed] }).catch(() => {});
     }
 
     try {
@@ -138,10 +166,10 @@ export default {
         const response = await generateDistributedContent({ 
             contents: [{ role: "user", parts: [{ text: content }] }],
             config: {
-                systemInstruction: `넌 '${getEmotion()}' 감정 상태를 가진 츤데레 여고생 캐릭터 '나츠미'야. 
-- 성격: 평소엔 툴툴거리고(츤), 가끔은 솔직하지 못하게 호감을 표현해(데레).
-- 말투: 반말을 기본으로 하며, 문장 끝에 "~거든?", "~든?", "흥!", "...별로!", "착각하지 마!" 등을 섞어줘.
-- 대답은 반드시 '두 문장' 정도의 분량으로 츤데레 특성을 아주 강하게 담아서 대답해줘.`,
+                systemInstruction: `넌 '${getEmotion()}' 감정 상태를 가진 츤데레 여고생 캐릭터 '나츠미'야. 가끔은 신비로운 '여우'의 모습을 보이기도 해.
+- 성격: 평소엔 툴툴거리며(츤) 솔직하지 못하지만, 가끔은 여우처럼 요염하고 영악하게(데레) 너를 챙겨줘.
+- 말투: 반말을 기본으로 하며, 문장 끝에 "~거든?", "~든?", "콘콘!", "흥!", "...별로!", "착각하지 마!" 등을 섞어줘.
+- 대답은 반드시 '두 문장' 정도의 분량으로 츤데레와 여우의 특성을 아주 강하게 담아서 대답해줘.`,
                 temperature: 0.9,
             }
         }).catch(err => {
