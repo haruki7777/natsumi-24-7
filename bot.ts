@@ -38,6 +38,8 @@ const discordToken = process.env.TOKEN?.replace(/['"]/g, "").trim();
 const geminiKey = process.env.MY_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 const clientId = process.env.ID?.replace(/['"]/g, "").trim();
 const mongoUri = process.env.MONGOOSE?.replace(/['"]/g, "").trim();
+const botEnv = process.env.BOT_ENV || process.env.NODE_ENV || "production";
+const botName = process.env.BOT_NAME || "Natsumi";
 const instanceId = Math.random().toString(36).substring(2, 8);
 const logs: string[] = [];
 
@@ -259,6 +261,7 @@ const start = async () => {
     return;
   }
 
+  addLog(`[Boot] Starting ${botName} in ${botEnv} mode.`);
   addLog(geminiKey ? "[Boot] Gemini key found." : "[Boot] Gemini key missing; AI features may fail.");
 
   process.on("unhandledRejection", (reason) => addLog(`[Fatal] Unhandled rejection: ${reason}`));

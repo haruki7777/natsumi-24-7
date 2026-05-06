@@ -15,6 +15,7 @@ const copyEntries = [
   "tsconfig.json",
   ".env.example",
   "docs/free-bot-hosting.md",
+  "docs/two-bot-setup.md",
 ];
 
 const packageJson = {
@@ -67,6 +68,8 @@ npm run start:lite
 ## Required environment variables
 
 \`\`\`env
+BOT_NAME="Natsumi"
+BOT_ENV="production"
 TOKEN=""
 ID=""
 MONGOOSE=""

@@ -20,6 +20,8 @@ npm run start:lite
 Required:
 
 ```env
+BOT_NAME="Natsumi"
+BOT_ENV="production"
 TOKEN=""
 ID=""
 MONGOOSE=""
