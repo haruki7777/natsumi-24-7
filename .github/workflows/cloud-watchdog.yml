@@ -22,20 +22,22 @@ jobs:
 
       - name: Protect lightweight sync files
         id: protect
-        env:
-          GH_RESTORE_TOKEN: ${{ secrets.GH_RESTORE_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
 
           git fetch origin main
 
+          workflow_file=".github/workflows/sync-lite-repo.yml"
           sync_files=(
-            ".github/workflows/sync-lite-repo.yml"
             "scripts/build-lite-repo.mjs"
             "docs/free-bot-hosting.md"
             "docs/two-bot-setup.md"
           )
+
+          if ! git cat-file -e "HEAD:${workflow_file}" 2>/dev/null; then
+            echo "${workflow_file} is missing. Cloud watchdog will sync the lite repo directly."
+          fi
 
           missing=()
           for file in "${sync_files[@]}"; do
@@ -85,11 +87,7 @@ jobs:
             git config user.email "actions@github.com"
             git add "${sync_files[@]}"
             git commit -m "Restore lightweight sync files"
-            if [ -n "${GH_RESTORE_TOKEN:-}" ]; then
-              git push "https://x-access-token:${GH_RESTORE_TOKEN}@github.com/haruki7777/natsumi-24-7.git" HEAD:main
-            else
-              git push origin HEAD:main
-            fi
+            git push origin HEAD:main
           fi
 
           echo "restored=${restored}" >> "$GITHUB_OUTPUT"
@@ -98,6 +96,7 @@ jobs:
         id: lite
         env:
           GH_TOKEN: ${{ github.token }}
+          LITE_REPO_DEPLOY_KEY: ${{ secrets.LITE_REPO_DEPLOY_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -120,9 +119,34 @@ jobs:
           done
 
           if [ "${reflected}" -ne 1 ]; then
-            echo "Lite repo did not reflect source ${source_short}. Latest lite message: ${current_lite_msg}" >&2
-            gh run list --repo haruki7777/natsumi-24-7 --workflow "Sync lightweight bot repo" --limit 3
-            exit 1
+            echo "Lite repo did not reflect source ${source_short}. Latest lite message: ${current_lite_msg}"
+            echo "Building and pushing the lightweight repo directly from cloud watchdog."
+
+            rm -rf lite-build
+            node scripts/build-lite-repo.mjs lite-build
+
+            mkdir -p ~/.ssh
+            printf '%s\n' "${LITE_REPO_DEPLOY_KEY}" > ~/.ssh/lite_repo_key
+            chmod 600 ~/.ssh/lite_repo_key
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+            cd lite-build
+            git init
+            git config user.name "natsumi-cloud-watchdog"
+            git config user.email "actions@github.com"
+            git add .
+            git commit -m "sync: lightweight build from ${source_short}"
+            git branch -M main
+            git remote add origin git@github.com:haruki7777/natsumi-bot-24-7.git
+            GIT_SSH_COMMAND='ssh -i ~/.ssh/lite_repo_key -o IdentitiesOnly=yes' git push --force origin main
+            cd ..
+
+            current_lite_sha="$(gh api repos/haruki7777/natsumi-bot-24-7/commits/main --jq .sha)"
+            current_lite_msg="$(gh api repos/haruki7777/natsumi-bot-24-7/commits/main --jq .commit.message)"
+            if [[ "${current_lite_msg}" != *"sync: lightweight build from ${source_short}"* ]]; then
+              echo "Direct lightweight sync did not reflect source ${source_short}. Latest lite message: ${current_lite_msg}" >&2
+              exit 1
+            fi
           fi
 
           echo "source_short=${source_short}" >> "$GITHUB_OUTPUT"
