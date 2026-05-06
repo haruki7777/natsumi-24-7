@@ -22,6 +22,12 @@ interface BotStatus {
   lastError: string;
   logs: string[];
   tag: string;
+  isCooling?: boolean;
+  guilds?: number;
+  eventLoopLagMs?: number;
+  eventLoopMaxMs?: number;
+  memoryMb?: number;
+  engine?: string;
 }
 
 export default function App() {
@@ -76,13 +82,16 @@ export default function App() {
             <Bot className="w-8 h-8 text-pink-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Natsumi Dashboard <span className="text-xs font-mono bg-pink-50 text-pink-500 px-2 py-0.5 rounded ml-2 uppercase font-bold">Ultimate v6.3.1</span></h1>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Natsumi Dashboard <span className="text-xs font-mono bg-pink-50 text-pink-500 px-2 py-0.5 rounded ml-2 uppercase font-bold">Damping Core v6.4.0</span></h1>
             <p className="text-gray-500 text-sm flex items-center gap-2 font-medium">
               {data?.tag || 'System Standby'}
               {data?.status === 'Online' ? (
                 <span className="flex h-2.5 w-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.5)] animate-pulse" />
               ) : (
                 <span className="flex h-2.5 w-2.5 rounded-full bg-gray-300" />
+              )}
+              {data?.isCooling && (
+                <span className="text-[10px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded animate-bounce">API COOLING</span>
               )}
             </p>
           </div>
@@ -200,10 +209,10 @@ export default function App() {
               </div>
               <div className="flex items-center justify-between text-xs font-bold text-white/90">
                 <span>엔진 버전:</span>
-                <span className="bg-white/20 px-2 py-0.5 rounded">v6.3.1 (Angler's Content Patch)</span>
+                <span className="bg-white/20 px-2 py-0.5 rounded">v6.4.0 (Damping Core Edition)</span>
               </div>
               <p className="text-[11px] text-white/80 leading-relaxed font-medium">
-                나츠미의 혁신적인 Ultimate v6.3.1 엔진이 가동 중입니다. 낚시 시스템의 대규모 업데이트를 통해 총 120여 종의 다양한 전리품(` /낚시 `)이 추가되었습니다. 0.5% 확률의 전설급 황금물고기부터 낡은 구두까지, 더욱 다채로워진 낚시 경험과 인벤토리 관리 시스템을 확인해보세요.
+                나츠미의 혁신적인 Damping Core v6.4.0 엔진이 가동 중입니다. 하이-트래픽 환경에서의 'WS & REST 쿨다운 시스템'이 탑재되어, 과도한 API 요청을 자동으로 감지하고 분산시킵니다. 0.05초의 정밀 오프셋 조정과 공격적인 캐시 스위퍼를 통해 대규모 서버에서도 끊김 없는 쾌적한 봇 응답 속도를 유지합니다.
               </p>
             </div>
           </div>

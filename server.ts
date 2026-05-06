@@ -33,18 +33,7 @@ interface ExtendedClient extends Client {
 async function startServer() {
   console.log(">>> [BOOT] starting startServer() function...");
   const app = express();
-  const PORT = Number(process.env.PORT || 3000);
-  const HOST = process.env.HOST || "0.0.0.0";
-  const LOG_LIMIT = Number(process.env.LOG_LIMIT || 100);
-  const SELF_PING_URL = process.env.SELF_PING_URL || `http://127.0.0.1:${PORT}/ping`;
-  const LOG_PINGS = process.env.LOG_PINGS === "true";
-  const SELF_PING_ENABLED = process.env.SELF_PING_ENABLED !== "false";
-  const CACHE_SWEEP_INTERVAL_MS = Number(process.env.CACHE_SWEEP_INTERVAL_MS || 300000);
-  const HEALTH_SAMPLE_INTERVAL_MS = Number(process.env.HEALTH_SAMPLE_INTERVAL_MS || 60000);
-  const LATENCY_WATCHDOG_ENABLED = process.env.LATENCY_WATCHDOG_ENABLED !== "false";
-  const LATENCY_RECONNECT_PING_MS = Number(process.env.LATENCY_RECONNECT_PING_MS || 3000);
-  const LATENCY_RECONNECT_CONSECUTIVE = Number(process.env.LATENCY_RECONNECT_CONSECUTIVE || 2);
-  const LATENCY_RECONNECT_COOLDOWN_MS = Number(process.env.LATENCY_RECONNECT_COOLDOWN_MS || 600000);
+  const PORT = 3000;
 
   const instanceId = Math.random().toString(36).substring(2, 8);
   let botStatus = "Offline";
@@ -52,9 +41,6 @@ async function startServer() {
   let botUptime = 0;
   let lastError = "";
   let messageCount = 0;
-  let highLatencySamples = 0;
-  let lastLatencyReconnectAt = 0;
-  let reconnectingDiscord = false;
   const logs: string[] = [];
 
   const discordToken = process.env.TOKEN?.replace(/['"]/g, "").trim();
@@ -66,7 +52,7 @@ async function startServer() {
     const timestamp = new Date().toLocaleTimeString();
     const entry = `[${timestamp}] ${msg}`;
     logs.push(entry);
-    if (logs.length > LOG_LIMIT) logs.shift();
+    if (logs.length > 100) logs.shift(); 
     console.log(entry);
   };
 
@@ -260,7 +246,12 @@ async function startServer() {
     const newClient = new Client({
       intents: intents,
       partials: [Partials.Channel, Partials.Message, Partials.User],
-      rest: { offset: 0, timeout: 60000, retries: 10 },
+      rest: { 
+        offset: 50, 
+        timeout: 15000, 
+        retries: 3,
+        rejectOnRateLimit: (data) => data.timeout > 10000 
+      },
       // 100+ Servers Aggressive Cache Strategy
       makeCache: Options.cacheWithLimits({
         MessageManager: 15,          // 최소한의 메시지만 보관
@@ -290,6 +281,15 @@ async function startServer() {
     }) as ExtendedClient;
     
     newClient.instanceId = instanceId;
+    
+    // --- Performance Damping & Rate Limit Cooling ---
+    newClient.rest.on('rateLimited', (info) => {
+      isCooling = true;
+      lastCoolingAt = Date.now();
+      addLog(`[Damping] API Cooling In Progress... Route: ${info.route} | Wait: ${info.timeToReset}ms`);
+      setTimeout(() => { isCooling = false; }, info.timeToReset);
+    });
+
     setupClientHandlers(newClient);
     return newClient;
   };
@@ -325,32 +325,6 @@ async function startServer() {
     }
   };
 
-  const reconnectDiscordGateway = async (reason: string) => {
-    if (!discordToken || !client || reconnectingDiscord) return;
-
-    const now = Date.now();
-    if (now - lastLatencyReconnectAt < LATENCY_RECONNECT_COOLDOWN_MS) return;
-
-    reconnectingDiscord = true;
-    lastLatencyReconnectAt = now;
-    botStatus = "Reconnecting";
-    addLog(`[Watchdog] Reconnecting Discord gateway: ${reason}`);
-
-    try {
-      client.destroy();
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      await client.login(discordToken);
-      highLatencySamples = 0;
-      addLog("[Watchdog] Discord gateway reconnect requested.");
-    } catch (e: any) {
-      botStatus = "Reconnect Failed";
-      lastError = e.message;
-      addLog(`[Watchdog] Reconnect failed: ${e.message}`);
-    } finally {
-      reconnectingDiscord = false;
-    }
-  };
-
   if (geminiKey) {
       addLog(`MY_GEMINI_API_KEY found`);
   } else {
@@ -379,33 +353,8 @@ async function startServer() {
         import("./utils/cache.js").then(m => m.clearCache()).catch(() => {});
       }
       if (global.gc) global.gc();
-      resetRuntimeLag();
-      import("./utils/cache.js").then(m => m.clearCache()).catch(() => {});
     } catch (e: any) {}
-  }, CACHE_SWEEP_INTERVAL_MS);
-
-  setInterval(() => {
-    if (client && client.isReady && client.isReady()) {
-      const sample = recordRuntimeSample(client);
-      if (sample.gatewayPing >= 500 || sample.eventLoopLagMs >= 100 || sample.eventLoopMaxMs >= 1000) {
-        addLog(`[Health] WS=${sample.gatewayPing}ms lag=${sample.eventLoopLagMs}/${sample.eventLoopMaxMs}ms memory=${sample.memoryRssMb}MB`);
-      }
-
-      if (!LATENCY_WATCHDOG_ENABLED) return;
-
-      if (sample.gatewayPing >= LATENCY_RECONNECT_PING_MS && sample.eventLoopLagMs < 100) {
-        highLatencySamples++;
-      } else {
-        highLatencySamples = 0;
-      }
-
-      if (highLatencySamples >= LATENCY_RECONNECT_CONSECUTIVE) {
-        reconnectDiscordGateway(`WS ping ${sample.gatewayPing}ms for ${highLatencySamples} samples`).catch((e) => {
-          addLog(`[Watchdog] Reconnect scheduling failed: ${e.message}`);
-        });
-      }
-    }
-  }, HEALTH_SAMPLE_INTERVAL_MS);
+  }, 300000);
 
   // --- MongoDB Connection ---
   if (mongoUri) {
@@ -444,11 +393,12 @@ async function startServer() {
 
   // --- API Routes ---
   app.get("/ping", (req, res) => {
-    if (LOG_PINGS) {
-      console.log(`[Ping] Received ping from ${req.headers['x-forwarded-for'] || req.ip}`);
-    }
+    console.log(`[Ping] Received ping from ${req.headers['x-forwarded-for'] || req.ip}`);
     res.status(200).send("Pong! I am awake.");
   });
+
+  let isCooling = false;
+  let lastCoolingAt = 0;
 
   app.get("/api/status", (req, res) => {
     const health = getRuntimeHealth(client);
@@ -464,7 +414,8 @@ async function startServer() {
       eventLoopLagMs: health.eventLoopLagMs,
       eventLoopMaxMs: health.eventLoopMaxMs,
       memoryMb: health.memoryRssMb,
-      engine: "v6.3.1 Ultimate Core",
+      isCooling: isCooling || (Date.now() - lastCoolingAt < 30000), // 30s cooling window after event
+      engine: "v6.4.0 Damping Core",
     });
   });
 
@@ -479,6 +430,15 @@ async function startServer() {
       res.status(500).json({ success: false, message: e.message });
     }
   });
+
+  setInterval(() => {
+    if (client && client.isReady && client.isReady()) {
+      const sample = recordRuntimeSample(client);
+      if (sample.gatewayPing >= 500 || sample.eventLoopLagMs >= 100 || sample.eventLoopMaxMs >= 1000) {
+        addLog(`[Health] WS=${sample.gatewayPing}ms lag=${sample.eventLoopLagMs}/${sample.eventLoopMaxMs}ms memory=${sample.memoryRssMb}MB`);
+      }
+    }
+  }, 60000);
 
   // --- Vite Middleware ---
   if (process.env.NODE_ENV !== "production") {
@@ -497,19 +457,19 @@ async function startServer() {
 
   console.log(`[Server] Starting instance: ${instanceId}`);
 
-  const server = app.listen(PORT, HOST, () => {
-    console.log(`[${instanceId}] Server running on http://${HOST}:${PORT}`);
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[${instanceId}] Server running on http://localhost:${PORT}`);
     
     // --- Self-Ping Mechanism (Keep Alive) ---
-    if (SELF_PING_ENABLED) {
-      setInterval(async () => {
-        try {
-          await fetch(SELF_PING_URL);
-        } catch (e: any) {
-          addLog(`Self-ping failed: ${e.message}`);
-        }
-      }, 300000);
-    }
+    setInterval(async () => {
+      try {
+        const response = await fetch(`http://localhost:${PORT}/ping`);
+        const text = await response.text();
+        addLog(`Self-ping successful: ${text}`);
+      } catch (e: any) {
+        addLog(`Self-ping failed: ${e.message}`);
+      }
+    }, 300000); 
   });
 
   server.on("error", (e: any) => {

@@ -22,14 +22,11 @@ export default {
     const health = getRuntimeHealth(interaction.client);
     const summary = summarizeRuntimeSamples();
     const diagnosis = classifyRuntime(health);
-    const botEnv = process.env.BOT_ENV || process.env.NODE_ENV || "unknown";
-    const botName = process.env.BOT_NAME || interaction.client.user?.username || "Natsumi";
 
     const embed = new EmbedBuilder()
-      .setTitle(`${botName} diagnostics`)
+      .setTitle("Bot diagnostics")
       .setColor(diagnosis === "Healthy" ? "Green" : "Orange")
       .addFields(
-        { name: "Environment", value: botEnv, inline: true },
         { name: "Discord ping", value: `${health.gatewayPing} ms`, inline: true },
         { name: "Event loop lag", value: `${health.eventLoopLagMs} ms avg / ${health.eventLoopMaxMs} ms max`, inline: true },
         { name: "Memory", value: `${health.memoryRssMb} MB RSS / ${health.memoryHeapMb} MB heap`, inline: false },
