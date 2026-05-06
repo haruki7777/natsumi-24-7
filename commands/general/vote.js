@@ -3,10 +3,10 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 export default {
     data: new SlashCommandBuilder()
         .setName("투표")
-        .setDescription("서버원들의 의견을 묻는 투표를 시작한다냥!")
+        .setDescription("인간들의 의견을 내가 직접 물어봐줄게! 콘콘!")
         .addStringOption(option =>
             option.setName("주제")
-                .setDescription("투표할 주제를 입력해 주라냥")
+                .setDescription("뭘 물어보고 싶은지 여기 적어봐!")
                 .setRequired(true)
         ),
     /**
@@ -16,15 +16,15 @@ export default {
         const topic = interaction.options.getString("주제");
 
         const embed = new EmbedBuilder()
-            .setTitle("📊 나츠미의 실시간 투표")
-            .setDescription(`**주제: ${topic}**\n\n아래의 반응을 눌러서 투표에 참여해 주라냥!`)
+            .setTitle("📊 나츠미의 공정한 투표소")
+            .setDescription(`**주제: ${topic}**\n\n중요한 결정을 해야 하나 봐? 내가 특별히 도와줄게! \n아래 반응을 눌러서 너희들의 생각을 말해봐! 콘콘!`)
             .addFields(
-                { name: "👍 찬성", value: "이 의견에 동의한다냥!", inline: true },
-                { name: "👎 반대", value: "이 의견에 반대한다냥!", inline: true }
+                { name: "👍 찬성", value: "이 의견에 나츠미도 찬성... 아, 아니 너희가 찬성하는 거야!", inline: true },
+                { name: "👎 반대", value: "이런 말도 안 되는 의견엔 반대하라구!", inline: true }
             )
-            .setColor("#00AE86")
+            .setColor("#FF7F50")
             .setThumbnail(interaction.client.user.displayAvatarURL())
-            .setFooter({ text: `${interaction.user.tag}님이 시작한 투표다냥`, iconURL: interaction.user.displayAvatarURL() })
+            .setFooter({ text: `${interaction.user.username} 녀석이 시작한 투표야.`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
 
         const message = await interaction.reply({ embeds: [embed], fetchReply: true });

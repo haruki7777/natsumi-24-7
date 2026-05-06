@@ -5,11 +5,11 @@ import BannedWords from "../../models/BannedWords.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("나츠미")
-    .setDescription("나츠미랑 대화하자냥! (AI)")
+    .setDescription("나츠미랑 대화할 거야? 별로 안 바쁘니까 들어는 줄게! (AI)")
     .addStringOption((option) =>
       option
         .setName("문장")
-        .setDescription("하고 싶은 말을 입력해주라냥")
+        .setDescription("무슨 말을 하고 싶은 거야? 콘콘!")
         .setRequired(true)
     ),
   /**
@@ -45,7 +45,7 @@ export default {
         }
       });
 
-      const replyText = response.text?.trim() || "흥... 뭐라고 해야 할지 모르겠다냥...";
+      const replyText = response.text?.trim() || "흥... 뭐라고 해야 할지 모르겠어! 바보야!";
       
       await interaction.editReply(replyText);
     } catch (err) {
@@ -62,11 +62,11 @@ export default {
       }
 
       if (err.message?.includes("NO_API_KEY")) {
-        return interaction.editReply("미안해... 지금은 나츠미가 대화할 준비가 안 됐어! (API 키가 없거나 유효하지 않다냥.)");
+        return interaction.editReply("미안해... 지금은 나츠미가 대화할 준비가 안 됐어! (서버 설정 문제라구! 콘콘!)");
       }
 
       await interaction.editReply({
-        content: `**냐하앗... 나츠미 머리가 아파졌다냥! 🤕\n오류: ${err.message}**`,
+        content: `**으악... 나츠미 머리가 아파졌어! 🤕\n오류: ${err.message}**`,
       });
     }
   },

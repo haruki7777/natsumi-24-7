@@ -20,7 +20,7 @@ export default {
         guildId: interaction.guild.id,
       });
       if (!log_Find) {
-        console.log("로그 설정이 되어있지 않다냥 (LogDB)");
+        console.log("로그 설정이 되어있지 않아! (LogDB) 콘콘!");
         return interaction.channel.delete().catch(console.error);
       } else {
         const logChannel = interaction.guild.channels.cache.get(log_Find.channelId);
@@ -30,7 +30,7 @@ export default {
           const targetName = parts.slice(0, -1).join("-") || interaction.channel.name;
 
           await logChannel.send({
-            content: `<@${targetId}>님의 ${targetName} 티켓이 종료되었다냥!`,
+            content: `🏮 <@${targetId}>의 소통 기록을 보관함에 넣었어! 숲의 대화 종료!`,
             files: [file],
           }).catch(console.error);
         }
@@ -39,7 +39,7 @@ export default {
     } else {
       interaction.reply({
         ephemeral: true,
-        content: `**관리자 전용 버튼이다냥!**`,
+        content: `**흥! 이건 관리자 권한이 있는 분들만 누를 수 있는 거야! 바보!**`,
       });
     }
   },

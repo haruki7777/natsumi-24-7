@@ -8,42 +8,42 @@ import {
 export default {
   data: new SlashCommandBuilder()
     .setName("공지")
-    .setDescription("특정 채널에 공지를 전송한다냥")
+    .setDescription("특정 채널에 나의 메시지를 전파하겠어! 콘콘!")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addChannelOption((option) =>
       option
         .setName("채널")
-        .setDescription("공지를 전송할 채널을 선택해 주라냥.")
+        .setDescription("어디에 내 메시지를 뿌릴 거야?")
         .setRequired(true)
         .addChannelTypes(ChannelType.GuildText)
     )
     .addStringOption((option) =>
       option
         .setName("내용")
-        .setDescription("공지 내용을 입력해 주세요. 줄바꿈은 \\n로 해주라냥")
+        .setDescription("무슨 내용인지 적어봐! (줄바꿈은 \\n)")
         .setRequired(true)
         .setMaxLength(4096)
     )
     .addStringOption((option) =>
       option
         .setName("멘션")
-        .setDescription("멘션 옵션")
+        .setDescription("누구를 호출할까?")
         .addChoices(
           { name: "없음", value: "없음" },
-          { name: "온라인 유저만 멘션", value: "here" },
-          { name: "모든 유저 멘션", value: "everyone" }
+          { name: "온라인 유저만 (here)", value: "here" },
+          { name: "모두 다 (everyone)", value: "everyone" }
         )
         .setRequired(true)
     )
     .addStringOption((option) =>
       option
         .setName("썸네일")
-        .setDescription("임베드 썸네일을 선택해 주라냥")
+        .setDescription("옆에 뭐라도 띄울까? 콘콘!")
         .setRequired(false)
         .addChoices(
           { name: "없음", value: "없음" },
-          { name: "서버 프로필", value: "서버 프로필" },
-          { name: "공지 작성자", value: "공지 작성자" }
+          { name: "서버 문양", value: "서버 프로필" },
+          { name: "내 얼굴(작성자)", value: "공지 작성자" }
         )
     ),
   /**
@@ -57,8 +57,8 @@ export default {
     const notice_thumbnail = interaction.options.getString("썸네일");
     
     const embed = new EmbedBuilder()
-      .setTitle(`📢 공지사항`)
-      .setColor("Orange")
+      .setTitle(`🦊 나츠미의 공지 전파`)
+      .setColor("#FF7F50")
       .setDescription(`**${notice_content.replace(/\\n/g, "\n")}**`)
       .setFooter({
         text: `${interaction.user.username}`,
@@ -88,9 +88,9 @@ export default {
     }
     
     await interaction.editReply({
-      content: `**${notice_channel}에 공지를 전송했다냥!!**`,
+      content: `**${notice_channel}에 공지를 성공적으로 뿌렸어! 별로 힘들진 않았지만!**`,
     });
     
-    await msg.react("✅").catch(() => {});
+    await msg.react("🏮").catch(() => {});
   },
 };

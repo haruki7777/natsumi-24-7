@@ -7,11 +7,11 @@ const slot_emojis = ["🍒", "🍋", "🍇", "🔔", "💎", "7️⃣", "🍀", 
 export default {
     data: new SlashCommandBuilder()
         .setName("슬롯머신")
-        .setDescription("슬롯머신을 돌린다냥! 행운을 빈다냥~")
+        .setDescription("눈 돌아가는 슬롯머신 한 판 어때? (흥, 탕진해도 모른다구!)")
         .addIntegerOption((f) =>
             f
                 .setName("금액")
-                .setDescription("베팅하실 금액을 입력해 주라냥")
+                .setDescription("베팅할 금액을 넣어봐! (최소 100금전)")
                 .setMinValue(100)
                 .setRequired(true)
         ),
@@ -30,18 +30,18 @@ export default {
             return interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`${interaction.user.username}님! 데이터가 존재하지 않다냥!\n\`/출석체크\`로 먼저 돈을 받아라냥!`)
-                        .setColor("Red")
+                        .setDescription(`${interaction.user.username}! 너는 우리 숲에 아직 이름도 안 적었어!\n\`/출석체크\`로 먼저 등록부터 하라구!`)
+                        .setColor("#ED4245")
                 ]
             });
         }
-
+  
         if (dobak_find.money < bettingMoney) {
             return interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`${interaction.user.username}님! 보유중인 잔액이 부족하다냥! 현재 잔액: \`${dobak_find.money.toLocaleString()}\`원`)
-                        .setColor("Red")
+                        .setDescription(`${interaction.user.username}! 주머니가 가볍네? 바보야! 현재 잔액: \`${dobak_find.money.toLocaleString()}\` 금전`)
+                        .setColor("#ED4245")
                 ]
             });
         }
@@ -61,33 +61,33 @@ export default {
             if (s1 === "7️⃣") {
                 winAmount = bettingMoney * 20;
                 xpAmount = 100;
-                resultText = `🔥 **슈퍼 잭팟!!!** 🔥\n행운의 숫자 '7'이 세 개나 나왔다냥!! 베팅 금액의 20배인 \`${winAmount.toLocaleString()}\`원을 땄다냥! 대박이다냥!!!`;
+                resultText = `🔥 **슈퍼 잭팟!!! 콘콘!!!** 🔥\n행운의 숫자 '7'이 세 개나 나왔어!! 베팅금의 20배인 \`${winAmount.toLocaleString()}\`금전을 땄어! 대박이다구!!!`;
                 color = "Gold";
             } else {
                 winAmount = bettingMoney * 10;
                 xpAmount = 50;
-                resultText = `🎊 **잭팟!!** 🎊\n세 개가 모두 똑같이 나왔다냥! 베팅 금액의 10배인 \`${winAmount.toLocaleString()}\`원을 땄다냥! 축하한다냥!`;
+                resultText = `🎊 **잭팟!! 콘콘!** 🎊\n세 개가 모두 똑같이 나왔네! 베팅금의 10배인 \`${winAmount.toLocaleString()}\`금전을 챙겼어. 축하... 한다구!`;
                 color = "Gold";
             }
         } else if (s1 === s2 || s2 === s3 || s1 === s3) {
             // Pair
             winAmount = Math.floor(bettingMoney * 1.5);
             xpAmount = 25;
-            resultText = `✨ **당첨!** ✨\n두 개가 똑같이 나왔다냥! 베팅 금액의 1.5배인 \`${winAmount.toLocaleString()}\`원을 땄다냥!`;
-            color = "Green";
+            resultText = `✨ **오, 당첨이야!** ✨\n두 개가 똑같이 나왔네? 베팅금의 1.5배인 \`${winAmount.toLocaleString()}\`금전을 벌었어!`;
+            color = "#2ECC71";
         } else {
             // Loss
             winAmount = -bettingMoney;
             xpAmount = 10;
             
             const lossMessages = [
-                `💀 **꽝!** 💀\n아무것도 안 맞았다냥... 베팅한 \`${bettingMoney.toLocaleString()}\`원을 잃었다냥. ㅋㅋㅋㅋ 나츠미가 맛있게 쓸게냥!`,
-                `👻 **운이 없다냥!** 👻\n어쩜 이렇게 하나도 안 맞을 수가 있냥? 돈은 고맙게 잘 받겠다냥!`,
-                `💔 **안타깝다냥...** 💔\n한 개도 안 똑같다냥! \`${bettingMoney.toLocaleString()}\`원이 공중분해 됐다냥!`,
-                `📉 **파산 조심하라냥!** 📉\n도박은 몸에 해롭다냥? \`${bettingMoney.toLocaleString()}\`원 내놔라냥!  흥!`
+                `💀 **꽝이야! 바보!** 💀\n아무것도 안 맞았잖아... 베팅한 \`${bettingMoney.toLocaleString()}\`금전은 내가 맛있게 쓸게! ㅋㅋㅋㅋ`,
+                `👻 **운이 없네? 콘콘!** 👻\n어쩜 이렇게 하나도 안 맞을 수가 있어? 너 설마 저주받은 거야?`,
+                `💔 **안타깝네... (거짓말)** 💔\n하나도 안 똑같은걸? \`${bettingMoney.toLocaleString()}\`금전이 공중분해 됐어! 흥!`,
+                `📉 **파산 조심하라구!** 📉\n도박은 몸에 해롭다고 몇 번을 말해? \`${bettingMoney.toLocaleString()}\`금전 내놔! 흥!`
             ];
             resultText = lossMessages[Math.floor(Math.random() * lossMessages.length)];
-            color = "Red";
+            color = "#ED4245";
         }
 
         await dobak_Schema.updateOne(
@@ -100,15 +100,15 @@ export default {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle("🎰 나츠미의 슬롯머신!")
+            .setTitle("🎰 나츠미의 호화로운 슬롯머신!")
             .setAuthor({
-                name: interaction.user.tag,
+                name: interaction.user.username,
                 iconURL: interaction.user.displayAvatarURL({ dynamic: true })
             })
             .setDescription(`**[ ${s1} | ${s2} | ${s3} ]**\n\n${resultText}`)
             .addFields({
-                name: "결과 잔액",
-                value: `\`${(dobak_find.money + winAmount).toLocaleString()}\`원`,
+                name: "💳 남은 주머니",
+                value: `\`${(dobak_find.money + winAmount).toLocaleString()}\` 금전`,
                 inline: true
             })
             .setColor(color)

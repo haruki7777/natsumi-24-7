@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("핑")
-    .setDescription("봇의 핑을 확인한다냥!"),
+    .setDescription("나츠미가 얼마나 빠르게 반응할 수 있는지 보여줄게! 콘콘!"),
   /**
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
@@ -40,13 +40,10 @@ export default {
       .setColor("#FF8C00") 
       .setThumbnail(client.user.displayAvatarURL())
       .addFields(
-        { name: "🏮 핵심 데이터 (Core)", value: `\`\`\`yml\n이름: ${client.user.username}\n버전: v2.3.2 (Vulpine Core)\n상태: 매우 쌩쌩함 (최고조)\`\`\``, inline: false },
-        { name: "\u200B", value: "\u200B", inline: false },
-        { name: "🍃 실행 환경", value: `**운영체제:** ${os.type()}\n**업타임:** <t:${uptime}:R>`, inline: true },
-        { name: "⚙️ 하드웨어", value: `**메모리:** ${usedMem}G / ${totalMem}G\n**부하량:** ${memPercent}%`, inline: true },
-        { name: "\u200B", value: "\u200B", inline: false },
-        { name: "📡 통신 상태", value: `**게이트웨이:** ${gatewayStatus} (${gatewayPing}ms)\n**응답 속도:** ${apiStatus} (${apiLatency}ms)`, inline: true },
-        { name: "🛰️ 네트워크", value: `**상태:** ${gatewayPing < 150 ? "완전 쾌적" : (gatewayPing < 300 ? "조금 느림" : "연결 불안")}\n**REST:** Stable`, inline: true }
+        { name: "🏮 봇 정보", value: `\`\`\`yml\n봇이름: ${client.user.username}\n봇버전: v2.3.2 (Vulpine Core)\n상태: 최고조\`\`\``, inline: false },
+        { name: "🍃 OS 정보", value: `\`\`\`yml\n운영체제: ${os.type()}\n아키텍처: ${os.arch()}\n업타임: 깨어있는 중\`\`\``, inline: true },
+        { name: "⚙️ 하드웨어 정보", value: `\`\`\`yml\n메모리: ${usedMem}G / ${totalMem}G\n사용률: ${memPercent}%\nCPU: ${cpuCount} Cores\`\`\``, inline: true },
+        { name: "📡 통신 및 네트워크", value: `\`\`\`yml\n게이트웨이: ${gatewayPing}ms (${gatewayStatus})\n응답속도: ${apiLatency}ms (${apiStatus})\n통신상태: ${gatewayPing < 150 ? "완전양호" : "불안정"}\`\`\``, inline: false }
       )
       .setFooter({ text: "나츠미는 항상 너를... 아니, 서버를 감시하고 있어! 🦊" })
       .setTimestamp();

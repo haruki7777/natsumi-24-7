@@ -5,11 +5,11 @@ import axios from "axios";
 export default {
   data: new SlashCommandBuilder()
     .setName("sfw")
-    .setDescription("귀여운 애니메이션 짤을 보여줍니다냥!")
+    .setDescription("건전하고 귀여운 애니메이션 짤을 보여줄게! 콘콘!")
     .addStringOption((option) =>
       option
         .setName("카테고리")
-        .setDescription("보고 싶은 짤의 카테고리를 선택해 주세요")
+        .setDescription("어떤 종류의 짤을 감상할래?")
         .setRequired(true)
         .addChoices(
           { name: "와이프 (Waifu)", value: "waifu" },
@@ -132,17 +132,18 @@ export default {
       if (!imageUrl) throw new Error("Image not found");
 
       const embed = new EmbedBuilder()
-        .setTitle(`따란! ${category} 짤이다냥!`)
-        .setDescription(`**취향존중!** <a:KemomimiDance:1048568057599119370>`)
+        .setTitle(`🏮 ${category} 짤 감상 시간이야!`)
+        .setDescription(`**흥! 네 취향이 이런 쪽이었어? 별로 상관없지만 말이야! 콘콘!**`)
         .setImage(imageUrl)
-        .setFooter({ text: `Source: ${source} | 나츠미 봇` })
+        .setAuthor({ name: "나츠미의 갤러리", iconURL: interaction.client.user.displayAvatarURL() })
+        .setFooter({ text: `영력 출처: ${source} | 나츠미의 보물상자` })
         .setTimestamp()
-        .setColor("Random");
+        .setColor("#FF7F50");
 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       console.error("Anime image fetch error:", error);
-      await interaction.editReply({ content: "이미지 서버가 불안정하다냥.. 잠시 후 다시 시도해 달라냥!" });
+      await interaction.editReply({ content: "이미지 서버에 여우불이 꺼졌어! (오류 발생) 나중에 다시 해봐! 흥!" });
     }
   },
 };

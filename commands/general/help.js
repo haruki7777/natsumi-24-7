@@ -13,7 +13,7 @@ import { getTranslation } from "../../utils/i18n.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("도움말")
-    .setDescription("도움말을 보여준다냥")
+    .setDescription("내가 뭘 도와야 해? 별로 안 바쁘니까 들어는 줄게! 콘콘!")
     .setNameLocalizations({
         "en-US": "help",
         "ja": "ヘルプ"

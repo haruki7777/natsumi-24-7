@@ -10,7 +10,7 @@ import { ensureKoreanFont } from "../../utils/fonts.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("랭크")
-    .setDescription("여우의 눈으로 너의 위업과 지갑을 감시한다냥!")
+    .setDescription("여우의 눈으로 너의 위업과 주머니 사정을 감시하겠어! 콘콘!")
     .addUserOption((option) =>
       option.setName("유저").setDescription("정보를 엿볼 대상을 골라봐!")
     ),
@@ -109,7 +109,7 @@ export default {
         // Draw Level
         ctx.fillStyle = "#FF7F50"; // Coral (Fox Theme)
         ctx.font = "bold 24px NanumGothic";
-        ctx.fillText(`狐 위계: ${level}`, 200, 120);
+        ctx.fillText(`📊 위계: ${level}`, 200, 120);
 
         // Draw XP Progress Bar
         const progress = Math.min(1, xp / needed);
@@ -136,11 +136,11 @@ export default {
         // Draw Money and Attendance
         ctx.fillStyle = "#FFD700"; // Gold
         ctx.font = "bold 22px NanumGothic";
-        ctx.fillText(`💰 주머니: ${money.toLocaleString()}냥`, 200, 210);
+        ctx.fillText(`💰 주머니: ${money.toLocaleString()} 금전`, 200, 210);
 
         ctx.fillStyle = "#00FF7F"; // Spring Green
         ctx.font = "bold 22px NanumGothic";
-        ctx.fillText(`📅 성실도: ${count}회 방문`, 200, 250);
+        ctx.fillText(`📅 성실도: ${count}회 출석`, 200, 250);
 
         const attachment = new AttachmentBuilder(await canvas.encode("png"), { name: `rank-${target.id}.png` });
         await interaction.editReply({ 
@@ -150,7 +150,7 @@ export default {
 
     } catch (error) {
         console.error("Canvas Error:", error);
-        await interaction.editReply("랭크 카드를 생성하는 중에 오류가 발생했다냥! 대신 정보를 텍스트로 알려주겠다냥.");
+        await interaction.editReply("으익! 랭크 카드를 그리다가 붓이 부러졌어! (오류 발생) 대신 정보만 알려줄게! 흥!");
         // Fallback to text embed if canvas fails
         // (Existing logic could go here)
     }

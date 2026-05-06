@@ -4,12 +4,12 @@ import Schema from "../../models/privateVoice.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("개인음성채널")
-    .setDescription("개인 음성 채널 생성 시스템 설정")
+    .setDescription("숲의 비밀 대화방 시스템을 설정할 거야! 콘콘!")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addStringOption((option) =>
       option
         .setName("옵션")
-        .setDescription("옵션을 선택해 주라냥")
+        .setDescription("추가할지 삭제할지 골라봐.")
         .setRequired(true)
         .addChoices(
           { name: "추가", value: "추가" },
@@ -19,14 +19,14 @@ export default {
     .addStringOption((option) =>
       option
         .setName("이름")
-        .setDescription("채널 이름 설정 | {user} = 유저 닉네임 | 예: 📞ㆍ{user}님의 방")
+        .setDescription("대화방 이름! {user}는 닉네임으로 바뀔 거야.")
         .setRequired(true)
         .setMaxLength(30)
     )
     .addChannelOption((option) =>
       option
         .setName("채널")
-        .setDescription("여기에 들어가면 개인 채널이 생성된다냥")
+        .setDescription("어디로 들어가야 비밀방이 생길까? (음성 채널)")
         .setRequired(true)
         .addChannelTypes(ChannelType.GuildVoice)
     )
@@ -53,7 +53,7 @@ export default {
         { categoryId: spawnCategory.id, name: namePattern },
         { upsert: true }
       );
-      return interaction.editReply({ content: `**✅ ${triggerChannel} 채널에 개인 음성 시스템을 설정했다냥!**` });
+      return interaction.editReply({ content: `**✅ ${triggerChannel}에 비밀 대화방 시스템을 설치했어! 콘콘!**` });
     }
     
     if (option === "삭제") {
@@ -63,9 +63,9 @@ export default {
       });
       
       if (deleted) {
-        return interaction.editReply({ content: `**✅ ${triggerChannel} 채널의 개인 음성 시스템을 삭제했다냥!**` });
+        return interaction.editReply({ content: `**✅ ${triggerChannel}의 비밀 대화방 시스템을 철거했어! 흥!**` });
       } else {
-        return interaction.editReply({ content: `**❌ 해당 채널은 설정되어 있지 않다냥!**` });
+        return interaction.editReply({ content: `**❌ 거긴 애초에 설정도 안 되어 있었잖아! 바보야?**` });
       }
     }
   },

@@ -4,13 +4,13 @@ import fetch from "node-fetch";
 export default {
   data: new SlashCommandBuilder()
     .setName("이모지스틸")
-    .setDescription("이모지를 서버로 가져온다냥!")
+    .setDescription("다른 곳의 예쁜 이모지를 내가 가져와 줄게! 콘콘!")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuildExpressions)
     .addStringOption((option) =>
-      option.setName("이모지").setDescription("가져올 이모지를 입력해주라냥").setRequired(true)
+      option.setName("이모지").setDescription("가져오고 싶은 이모지를 여기 넣어봐!").setRequired(true)
     )
     .addStringOption((option) =>
-      option.setName("이름").setDescription("새로 만들 이모지 이름을 입력해주라냥 (영문 권장)").setRequired(true)
+      option.setName("이름").setDescription("새로 지어줄 이름은 뭐야? (영문 권장)").setRequired(true)
     ),
   /**
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
@@ -24,7 +24,7 @@ export default {
 
     if (emoji.startsWith("<") && emoji.endsWith(">")) {
       const idMatch = emoji.match(/\d{15,}/);
-      if (!idMatch) return interaction.editReply("올바른 이모지가 아니다냥!");
+      if (!idMatch) return interaction.editReply("흥! 제대로 된 이모지를 가져와야 할 거 아냐! 바보야?");
       const id = idMatch[0];
       const isAnimated = emoji.includes(":a:");
       url = `https://cdn.discordapp.net/emojis/${id}.${isAnimated ? "gif" : "png"}?quality=lossless`;
@@ -38,15 +38,15 @@ export default {
       });
 
       const embed = new EmbedBuilder()
-        .setTitle("✅ 이모지 스틸 성공!")
-        .setDescription(`성공적으로 <:${createdEmoji.name}:${createdEmoji.id}> 이모지를 추가했다냥!`)
-        .setColor("Orange")
+        .setTitle("✅ 이모지 획득 완료! 콘콘!")
+        .setDescription(`흥, 특별히 이 숲에 **${createdEmoji.name}** 이모지를 심어줬어! \n**나한테 고마워하라고! 알겠어?** ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
+        .setColor("#FF7F50")
         .setThumbnail(url);
 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       console.error(error);
-      await interaction.editReply({ content: "**이모지를 추가하는 도중에 오류가 발생했다냥!**" });
+      await interaction.editReply({ content: "**으악! 내 영력이 부족한 건지 오류가 났어! 바보야!**" });
     }
   },
 };

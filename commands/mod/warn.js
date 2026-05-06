@@ -8,34 +8,34 @@ import warning_Schema from "../../models/warnings.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("경고")
-    .setDescription("경고를 부여/회수합니다냥")
+    .setDescription("잘못을 저지른 인간들에게 주의를 줄게! 콘콘!")
     .addStringOption((data) =>
       data
         .setName("옵션")
-        .setDescription("옵션을 선택해 주라냥")
+        .setDescription("뭘 하고 싶어?")
         .setRequired(true)
         .addChoices(
-          { name: "부여", value: "부여" },
-          { name: "회수", value: "회수" }
+          { name: "딱지 붙이기(부여)", value: "부여" },
+          { name: "딱지 떼주기(회수)", value: "회수" }
         )
     )
     .addUserOption((datas) =>
       datas
         .setName("유저")
-        .setDescription("유저를 입력해 주라냥!")
+        .setDescription("누구를 지목할 거야?")
         .setRequired(true)
     )
     .addIntegerOption((datass) =>
       datass
         .setName("횟수")
-        .setDescription("경고를 몇 개만큼 회수/부여할 건지 입력해 주라냥!")
+        .setDescription("몇 장이나 처리할까?")
         .setRequired(false)
         .setMinValue(0)
     )
     .addStringOption((datasss) =>
       datasss
         .setName("사유")
-        .setDescription("사유를 입력해 주라냥")
+        .setDescription("이유가 뭐야? 제대로 설명하라구!")
         .setRequired(false)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
@@ -72,10 +72,10 @@ export default {
       const embed = new EmbedBuilder()
         .setColor("Orange")
         .setTimestamp()
-        .setTitle("⚠️ 경고 부여")
+        .setTitle("⚠️ 영력의 경고")
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
         .setDescription(
-          `**${user} 님에게 경고 ${integer}회를 부여했다냥!\n총 경고 수: ${(warning_find?.count || 0) + integer}회**`
+          `**${user}! 너에게 경고 ${integer}회를 줬어! \n반성하고 꼬리 내리고 있으라구! 콘콘! \n현재 총 경고: ${(warning_find?.count || 0) + integer}회**`
         )
         .addFields(
           {
@@ -91,13 +91,13 @@ export default {
     if (option == "회수") {
       if (!warning_find || warning_find.count === 0) {
         return interaction.editReply({
-          content: "**회수할 경고가 없다냥**",
+          content: "**흥! 회수할 경고도 없는데 왜 나를 부르는 거야?**",
         });
       }
       
       if (warning_find.count - integer < 0) {
         return interaction.editReply({
-          content: `**회수할 경고 수가 유저의 경고 수(${warning_find.count}회)보다 많다냥**`,
+          content: `**회수할 경고가 그렇게 많아? 이 녀석 경고는 ${warning_find.count}회뿐이라구! 바보야?**`,
         });
       }
       
@@ -109,10 +109,10 @@ export default {
       const embed = new EmbedBuilder()
         .setColor("Orange")
         .setTimestamp()
-        .setTitle("✅ 경고 회수")
+        .setTitle("✅ 자비의 경고 회수")
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
         .setDescription(
-          `**${user}님의 경고를 ${integer}회 만큼 회수했다냥\n총 경고 수: ${warning_find.count - integer}회**`
+          `**${user}! 너의 경고를 ${integer}회 만큼 거둬줬어. \n내가 자비로운 여우라는 걸 잊지 말라구! 콘콘! \n남은 경고: ${warning_find.count - integer}회**`
         )
         .addFields(
           {

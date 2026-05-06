@@ -5,11 +5,11 @@ import { addXP } from "../../events/levels.js";
 export default {
     data: new SlashCommandBuilder()
         .setName("붕어빵뽑기")
-        .setDescription("뜨끈뜨끈한 붕어빵 기계에서 운을 시험해봐냥!")
+        .setDescription("뜨끈뜨끈한 붕어빵 기계에서 운을 시험해봐! 콘콘!")
         .addIntegerOption((f) =>
             f
                 .setName("금액")
-                .setDescription("베팅하실 금액을 입력해 주라냥")
+                .setDescription("얼마나 베팅할 거야? (최소 100냥)")
                 .setMinValue(100)
                 .setRequired(true)
         ),
@@ -73,7 +73,7 @@ export default {
             // 배점: (베팅금 * 10) * 개수 -> 10배~100배
             winAmount = (bettingMoney * 10) * quantity;
             xpAmount = 300 + (quantity * 20);
-            resultText = `🔥 **역사적인 순간이다냥!!!!** 🔥\n전설 속의 \`${fishType}\`을(를) 무려 **${quantity}개**나 낚아올렸다냥!! 대박 배당 보너스가 터져서 총 \`${winAmount.toLocaleString()}\`원을 땄다냥!`;
+            resultText = `🔥 **역사적인 순간이야!!!!** 🔥\n전설 속의 \`${fishType}\`을(를) 무려 **${quantity}개**나 낚아올렸어!! 대박 보너스가 터져서 총 \`${winAmount.toLocaleString()}\` 냥을 벌었어! 축하해, 바보야! 콘콘!`;
             color = "#FFD700";
         } else if (chance <= 15.5) {
             // Intermediate (15%) - 10 Types
@@ -95,7 +95,7 @@ export default {
             // 배점: 베팅금 * (1 + (개수 * 0.5)) -> 1.5배~6배
             winAmount = Math.floor(bettingMoney * (1 + (quantity * 0.5)));
             xpAmount = 50 + (quantity * 5);
-            resultText = `🎊 **와아! 대성공이다냥!!** 🎊\n퀄리티 높은 \`${fishType}\`을(를) **${quantity}개**나 뽑았다냥! 나츠미도 한 입만 달라냥~ \`${winAmount.toLocaleString()}\`원을 챙겼다냥!`;
+            resultText = `🎊 **와아! 대성공이야!!** 🎊\n퀄리티 높은 \`${fishType}\`을(를) **${quantity}개**나 뽑았어! 나츠미도 한 입만 주면 좋겠는데... (흥!) \`${winAmount.toLocaleString()}\` 냥을 챙겼어!`;
             color = "#FFA500";
         } else if (chance <= 40.5) {
             // Normal (25%) - 10 Types
@@ -117,7 +117,7 @@ export default {
             // 배점: 베팅금 * (0.8 + (개수 * 0.1)) -> 0.9배~1.8배
             winAmount = Math.floor(bettingMoney * (0.8 + (quantity * 0.1)));
             xpAmount = 20 + quantity;
-            resultText = `✨ **나쁘지 않다냥! 성공이다냥!** ✨\n맛있는 \`${fishType}\`을(를) **${quantity}개** 획득했다냥! \`${winAmount.toLocaleString()}\`원을 벌어들였다냥.`;
+            resultText = `✨ **나쁘지 않네! 성공이야!** ✨\n맛있는 \`${fishType}\`을(를) **${quantity}개** 획득했어! \`${winAmount.toLocaleString()}\` 냥을 벌어들였다구! 고마워하라구!`;
             color = "#8B4513";
         } else {
             // Fail (59.5%) - 10 Types
@@ -136,7 +136,7 @@ export default {
             fishType = failTypes[Math.floor(Math.random() * failTypes.length)];
             winAmount = -bettingMoney;
             xpAmount = 10;
-            resultText = `💀 **이걸 돈 주고 뽑았냐냥? ㅋㅋㅋ** 💀\n기계에서 나온 건 \`${fishType}\`뿐이다냥! 베팅금 \`${bettingMoney.toLocaleString()}\`원을 나츠미가 맛있게 냠냠 하겠다냥!`;
+            resultText = `💀 **이걸 돈 주고 뽑은 거야? ㅋㅋㅋ** 💀\n기계에서 나온 건 \`${fishType}\`뿐이야! 베팅금 \`${bettingMoney.toLocaleString()}\` 냥은 내가 맛있게 쓸게! ㅋㅋㅋㅋ 꼬시네!`;
             color = "#FF0000";
         }
 
@@ -153,19 +153,19 @@ export default {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle("🥞 나츠미의 붕어빵 기계")
+            .setTitle("🥞 나츠미의 뜨끈뜨끈 붕어빵 기계")
             .setAuthor({
-                name: interaction.user.tag,
+                name: interaction.user.username,
                 iconURL: interaction.user.displayAvatarURL({ dynamic: true })
             })
             .setDescription(`**결과: ${fishType}**\n\n${resultText}`)
             .addFields(
-                { name: "베팅 금액", value: `\`${bettingMoney.toLocaleString()}\`원`, inline: true },
-                { name: "최종 수익", value: `\`${(netGain > 0 ? "+" : "") + netGain.toLocaleString()}\`원`, inline: true },
-                { name: "보유 잔액", value: `\`${(userData.money + netGain).toLocaleString()}\`원`, inline: true }
+                { name: "베팅 금액", value: `\`${bettingMoney.toLocaleString()}\` 냥`, inline: true },
+                { name: "최종 수익", value: `\`${(netGain > 0 ? "+" : "") + netGain.toLocaleString()}\` 냥`, inline: true },
+                { name: "보유 잔액", value: `\`${(userData.money + netGain).toLocaleString()}\` 냥`, inline: true }
             )
             .setColor(color)
-            .setFooter({ text: "운칠기삼이라냥! 적당히 즐겨라냥~" })
+            .setFooter({ text: "적당히 즐기라고! 중독되면 꼬리로 때릴 거야! 콘콘!" })
             .setTimestamp();
 
         return interaction.editReply({ embeds: [embed] });

@@ -13,7 +13,7 @@ export default {
         
         const targetUser = await client.users.fetch(targetUserId).catch(() => null);
         if (!targetUser) {
-            return interaction.reply({ content: "**유저 정보를 찾을 수 없다냥!**", ephemeral: true });
+            return interaction.reply({ content: "**흥! 그런 녀석은 이 숲에 없어! (유저 정보 없음) 콘콘!**", ephemeral: true });
         }
 
         const levelData = await levelDB.findOne({ GuildID: guildId, UserID: targetUserId });
@@ -23,15 +23,15 @@ export default {
         const progress = Math.min((xp / requiredXP) * 100, 100).toFixed(1);
 
         const embed = new EmbedBuilder()
-            .setAuthor({ name: `${targetUser.username}님의 레벨 정보`, iconURL: targetUser.displayAvatarURL() })
-            .setTitle("📊 레벨 상세 내역")
+            .setAuthor({ name: `${targetUser.username}의 서열 기록`, iconURL: targetUser.displayAvatarURL() })
+            .setTitle("📊 서열 상세 내역")
             .addFields(
-                { name: "현재 레벨", value: `**Lv.${level}**`, inline: true },
-                { name: "현재 경험치", value: `**${xp.toLocaleString()} XP**`, inline: true },
-                { name: "다음 레벨까지", value: `**${(requiredXP - xp).toLocaleString()} XP**`, inline: true }
+                { name: "🏮 현재 위계", value: `**위계 ${level}**`, inline: true },
+                { name: "✨ 축적된 영력", value: `**${xp.toLocaleString()} 영력**`, inline: true },
+                { name: "🔝 다음 위계까지", value: `**${(requiredXP - xp).toLocaleString()} 영력**`, inline: true }
             )
-            .setDescription(`**성장률: \`${progress}%\`**\n` + createProgressBar(xp, requiredXP))
-            .setColor("#3498DB")
+            .setDescription(`**영력 집중도: \`${progress}%\`**\n` + createProgressBar(xp, requiredXP))
+            .setColor("#FF8C00")
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed], ephemeral: true });

@@ -150,13 +150,13 @@ export default {
              flowPart = text.substring(midpoint);
           }
 
-          aiReading = readingPart || "리딩을 불러오는 데 실패했다냥..";
-          aiFlow = flowPart || "운명의 흐름이 안개처럼 신비롭게 흩어져 있다냥. 하지만 곧 빛이 비출 거다냥!";
+          aiReading = readingPart || "흥! 운명을 읽는 데 방해가 생겼어! (리딩 실패) 콘콘!";
+          aiFlow = flowPart || "운명의 흐름이 안개 속에 숨어버렸네. 뭐, 나중에 다시 봐줄게! 흥!";
 
         } catch (err) {
           console.error("[Fortune AI Error]", err);
-          aiReading = "별의 기운이 불안정해서 리딩을 가져오지 못했다냥... (AI Error)";
-          aiFlow = "안개 속에서 길을 잃었다냥. 하지만 조만간 빛이 비출 거다냥!";
+          aiReading = "으윽... 영력이 부족해서 지금은 운명을 읽을 수 없어! (AI Error)";
+          aiFlow = "잠시 영력을 회복해야겠어. 나중에 다시 오라구! 바보!";
         }
 
         const resultEmbed = new EmbedBuilder()

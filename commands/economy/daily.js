@@ -12,7 +12,7 @@ export default {
   data: new SlashCommandBuilder()
     .setName("출석체크")
     .setDescription(
-      `콘콘! 출석 도장 받고 용돈(${moneygiveamount.toLocaleString()}냥)이랑 영력을 챙겨가라구!`
+      `콘콘! 출석 도장 받고 용돈(${moneygiveamount.toLocaleString()}금전)이랑 영력을 챙겨가라구!`
     ),
   /**
    *
@@ -116,8 +116,8 @@ export default {
         }일 째 출석 완료!**\n\n콘콘! 자 여기 용돈이야. 허튼 데 쓰지 말고 잘 간직하라구? \n**아, 별로 널 위해서 주는 건 아니니까!**`
       )
       .addFields({
-        name: "💰 챙겨준 냥",
-        value: `\`${moneygiveamount.toLocaleString()}\` 냥`,
+        name: "💰 챙겨준 금전",
+        value: `\`${moneygiveamount.toLocaleString()}\` 금전`,
         inline: true
       })
       .addFields({
@@ -132,7 +132,7 @@ export default {
       })
       .addFields({
         name: "📦 내 지갑",
-        value: `\`${currentMoney.toLocaleString()}\` 냥`,
+        value: `\`${currentMoney.toLocaleString()}\` 금전`,
         inline: true
       })
       .addFields({

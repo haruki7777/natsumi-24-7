@@ -25,11 +25,11 @@ let ActivitiesType = {
 export default {
   data: new SlashCommandBuilder()
     .setName("유저정보")
-    .setDescription("유저정보를 확인한다냥!")
+    .setDescription("숲에 머무는 인간의 정보를 엿볼까? 콘콘!")
     .addUserOption((op) =>
       op
         .setName("유저")
-        .setDescription("정보를 조회할 유저를 선택하냥.")
+        .setDescription("누구의 정보를 캐내고 싶은 거야?")
         .setRequired(false)
     ),
   /**

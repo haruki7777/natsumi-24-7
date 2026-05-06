@@ -62,7 +62,7 @@ export default {
 
             const biteEmbed = new EmbedBuilder()
                 .setTitle("❗ 지금이야, 바보야!")
-                .setDescription("엄청난 힘이 느껴진다구!! 빨리 낚아올려! 뭐 해!!!")
+                .setDescription("엄청난 영력이 느껴진다구!! 빨리 낚아올려! 뭐 해!!!")
                 .setColor("#FFD700")
                 .setThumbnail("https://cdn-icons-png.flaticon.com/512/3241/3241951.png");
 
@@ -181,8 +181,8 @@ export default {
                         .setTitle("🎉 낚시 성공! 콘콘!")
                         .setDescription(`**${fishType}**을(를) 낚아올리다니, 제법이네? \n**별로 널 칭찬하는 건 아니니까 착각하지 마!** ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
                         .addFields(
-                            { name: "💰 챙겨준 냥", value: `\`${bonus.toLocaleString()}\` 냥`, inline: true },
-                            { name: "💳 총 주머니", value: `\`${(userData.money + bonus).toLocaleString()}\` 냥`, inline: true }
+                            { name: "💰 챙겨준 금전", value: `\`${bonus.toLocaleString()}\` 금전`, inline: true },
+                            { name: "💳 총 주머니", value: `\`${(userData.money + bonus).toLocaleString()}\` 금전`, inline: true }
                         )
                         .setColor(color)
                         .setThumbnail("https://cdn-icons-png.flaticon.com/512/1152/1152912.png")
@@ -202,8 +202,8 @@ export default {
                         .setTitle("❌ 낚시 실패... 한심해!")
                         .setDescription("바보야! 그렇게 굼떠서 어떡해? 물고기가 비웃으면서 도망갔잖아! 콘콘!")
                         .addFields(
-                            { name: "💸 수리비 패널티", value: `\`-${penalty.toLocaleString()}\` 냥`, inline: true },
-                            { name: "💳 남은 주머니", value: `\`${Math.max(0, userData.money - penalty).toLocaleString()}\` 냥`, inline: true }
+                            { name: "💸 수리비 패널티", value: `\`-${penalty.toLocaleString()}\` 금전`, inline: true },
+                            { name: "💳 남은 주머니", value: `\`${Math.max(0, userData.money - penalty).toLocaleString()}\` 금전`, inline: true }
                         )
                         .setColor("#ED4245")
                         .setThumbnail("https://cdn-icons-png.flaticon.com/512/1198/1198402.png")

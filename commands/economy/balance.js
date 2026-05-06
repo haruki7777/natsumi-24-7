@@ -45,7 +45,7 @@ export default {
         ? `콘콘! 네 주머니 사정은 이래. \n**별로 널 걱정해서 세어보는 건 아니니까?**` 
         : `**\`${user.username}\`** 녀석의 주머니를 샅샅이 뒤져봤어! 🦊`)
       .addFields(
-        { name: "💰 현재 잔액", value: `**${dobak_find.money.toLocaleString("ko-KR")} 냥**`, inline: true },
+        { name: "💰 현재 잔액", value: `**${dobak_find.money.toLocaleString("ko-KR")} 금전**`, inline: true },
         { name: "🏆 재력 순위", value: `**${ranking}위** (부러우면 지는 거야!)`, inline: true }
       )
       .setFooter({ text: "여우는 돈 냄새를 아주 잘 맡는답니다~" });

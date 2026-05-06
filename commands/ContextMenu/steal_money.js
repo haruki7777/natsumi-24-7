@@ -20,11 +20,11 @@ import {
       const executor = interaction.user;
   
       if (targetUser.id === executor.id) {
-        return interaction.editReply({ content: "❌ **자신의 지갑을 서리할 수는 없다냥! 그건 그냥 돈 옮기기다냥!**" });
+        return interaction.editReply({ content: "❌ **자신의 지갑을 서리하겠다구? 바보야? 그건 그냥 주머니 옮기기잖아!**" });
       }
   
       if (targetUser.bot) {
-        return interaction.editReply({ content: "❌ **봇의 지갑은 텅 비어있다냥! 쇠밖에 안 나온다냥!**" });
+        return interaction.editReply({ content: "❌ **봇의 지갑은 텅 비어있어! 쇠붙이밖에 안 나올걸?**" });
       }
   
       // Fetch both users data
@@ -32,11 +32,11 @@ import {
       const targetData = await dobak_Schema.findOne({ userid: targetUser.id });
   
       if (!executorData) {
-        return interaction.editReply({ content: "❌ **너님은 거지다냥! `/출석체크`로 먼저 자본금을 마련해라냥!**" });
+        return interaction.editReply({ content: "❌ **너는 아직 빈털터리잖아! `/출석체크`부터 하고 오라구!**" });
       }
   
       if (!targetData || targetData.money < 1000) {
-        return interaction.editReply({ content: "❌ **상대방이 너무 가난해서 털어갈 게 없다냥... 불쌍하다냥.**" });
+        return interaction.editReply({ content: "❌ **상대방이 너무 가난해서 털어갈 게 없어... 불쌍하지도 않아? 콘콘!**" });
       }
   
       const chance = Math.random() * 100;
@@ -56,10 +56,10 @@ import {
   
         const embed = new EmbedBuilder()
           .setTitle("🧤 서리 대성공! (살금살금)")
-          .setDescription(`**${targetUser.username}**님의 지갑에서 몰래 \`${finalSteal.toLocaleString()}\`원을 빼냈냥!\n\n나츠미는 아무것도 못 본 거다냥... (쉿!)`)
+          .setDescription(`**${targetUser.username}**의 지갑에서 몰래 \`${finalSteal.toLocaleString()}\`금전을 빼냈어!\n\n나츠미는 아무것도 못 본 걸로 해줄게... (흥!)`)
           .addFields(
-            { name: "💰 획득 금액", value: `\`+${finalSteal.toLocaleString()}\`원`, inline: true },
-            { name: "💳 현재 잔액", value: `\`${(executorData.money + finalSteal).toLocaleString()}\`원`, inline: true }
+            { name: "💰 획득 금액", value: `\`+${finalSteal.toLocaleString()}\` 금전`, inline: true },
+            { name: "💳 현재 주머니", value: `\`${(executorData.money + finalSteal).toLocaleString()}\` 금전`, inline: true }
           )
           .setColor("#2ECC71")
           .setThumbnail("https://cdn-icons-png.flaticon.com/512/1000/1000946.png")
@@ -75,11 +75,11 @@ import {
         await dobak_Schema.updateOne({ userid: targetUser.id }, { $inc: { money: finalFine } });
   
         const embed = new EmbedBuilder()
-          .setTitle("🚨 서리 실패! (딱 걸렸다냥!)")
-          .setDescription(`**${targetUser.username}**님의 지갑을 건드리다가 나츠미한테 딱 걸렸다냥!!\n\n합의금으로 \`${finalFine.toLocaleString()}\`원을 상대방에게 줬다냥. ㅋㅋㅋㅋ 꼴좋다냥!`)
+          .setTitle("🚨 서리 실패! (딱 걸렸어!)")
+          .setDescription(`**${targetUser.username}**의 지갑을 건드리다가 나츠미한테 딱 걸렸네!!\n\n합의금으로 \`${finalFine.toLocaleString()}\`금전을 상대방에게 줬어. ㅋㅋㅋㅋ 꼴좋다구!`)
           .addFields(
-            { name: "💸 지출 금액", value: `\`-${finalFine.toLocaleString()}\`원`, inline: true },
-            { name: "💳 현재 잔액", value: `\`${(executorData.money - finalFine).toLocaleString()}\`원`, inline: true }
+            { name: "💸 지출 금액", value: `\`-${finalFine.toLocaleString()}\` 금전`, inline: true },
+            { name: "💳 현재 주머니", value: `\`${(executorData.money - finalFine).toLocaleString()}\` 금전`, inline: true }
           )
           .setColor("#E74C3C")
           .setThumbnail("https://cdn-icons-png.flaticon.com/512/252/252030.png")

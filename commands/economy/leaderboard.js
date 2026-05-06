@@ -37,12 +37,12 @@ export default {
         }
         embed.addFields({
           name: `${i === 0 ? '🦊' : i + 1 + '.'} ${user.username}`,
-          value: `**${(find[i].money || 0).toLocaleString("ko-KR")}** 냥`,
+          value: `**${(find[i].money || 0).toLocaleString("ko-KR")}** 금전`,
         });
       } catch (e) {
         embed.addFields({
           name: `${i + 1}. 어딘가의 인간`,
-          value: `**${(find[i].money || 0).toLocaleString("ko-KR")}** 냥`,
+          value: `**${(find[i].money || 0).toLocaleString("ko-KR")}** 금전`,
         });
       }
     }

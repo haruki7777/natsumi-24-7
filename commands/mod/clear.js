@@ -3,18 +3,18 @@ import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.
 export default {
     data: new SlashCommandBuilder()
         .setName("청소")
-        .setDescription("청소할 메시지 수와 유저를 선택해주세요! (오래된 메시지는 불가능해요)")
+        .setDescription("채널의 지저분한 메시지들을 정리할까? (콘콘!)")
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
         .addIntegerOption(option =>
             option.setName('숫자')
-                .setDescription('1~99까지 청소 가능하다냥!')
+                .setDescription('1~99개까지 한꺼번에 치울 수 있어!')
                 .setMinValue(1)
                 .setMaxValue(99)
                 .setRequired(true)
         )
         .addUserOption(option =>
             option.setName('유저')
-                .setDescription('메시지를 쓴 유저를 기입해주라냥!')
+                .setDescription('누가 쓴 것만 골라서 치울까?')
                 .setRequired(false)
         ),
 
@@ -30,7 +30,7 @@ export default {
         });
 
         const res = new EmbedBuilder()
-            .setColor('Orange');
+            .setColor("#FF8C00");
 
         if (target) {
             let i = 0;
@@ -44,16 +44,16 @@ export default {
             });
 
             await channel.bulkDelete(filtered).then(messages => {
-                res.setDescription(`따란! ${target}의 ${messages.size}개를 청소했어요! 임무 완료!\nʕっ•ᴥ•ʔっ`)
+                res.setDescription(`흥! ${target} 녀석이 쓴 메시지 ${messages.size}개를 말끔히 치웠어!\n나한테 고마워하라구! 콘콘!`)
                     .setImage('https://media.tenor.com/rL-Y22ZfZxgAAAAC/foxplushy-foxy.gif')
-                    .setFooter({ text: '이 메세지는 5초후에 사라진다냥' });
+                    .setFooter({ text: '이 메시지는 5초 후에 저절로 사라질 거야! 흥!' });
                 interaction.editReply({ embeds: [res] });
             });
         } else {
             await channel.bulkDelete(amount, true).then(messages => {
-                res.setDescription(`빠밤! ${messages.size} 개를 삭제했어여!! 임무 완료!\nʕっ•ᴥ•ʔっ`)
+                res.setDescription(`빠밤! 지저분했던 메시지 ${messages.size}개를 숲의 바람으로 날려버렸어!\n임무 완료라구! 콘콘!`)
                     .setImage('https://media.tenor.com/rL-Y22ZfZxgAAAAC/foxplushy-foxy.gif')
-                    .setFooter({ text: '이 메세지는 5초후에 사라진다냥' });
+                    .setFooter({ text: '이 메시지는 5초 후에 저절로 사라질 거야! 흥!' });
                 interaction.editReply({ embeds: [res] });
             });
         }

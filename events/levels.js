@@ -30,10 +30,10 @@ export const addXP = async(guildId, userId, xpToAdd, target) => {
 
         const author = target.author || target.user;
         const LevelEmbed = new EmbedBuilder()
-        .setTitle("레벨 업!!")
-        .setDescription(`축하해요! **${author.username}**! 당신은 지금! __**레벨 ${level}을(를) 얻었다냥!**__ 🥳`)
+        .setTitle("🏮 서열 상승!!")
+        .setDescription(`오, **${author.username}**! 너 좀 치는데? \n이제 __**서열 ${level}**__에 도달했어! \n딱히 네가 대단해서 칭찬하는 건 아니니까! 콘콘! 🥳`)
         .setThumbnail(author.displayAvatarURL())
-        .setColor(`Orange`)
+        .setColor(`#FF8C00`)
         .setTimestamp(Date.now());
 
         if (target.reply) {

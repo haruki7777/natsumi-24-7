@@ -3,24 +3,24 @@ import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("타임아웃")
-    .setDescription("시끄러운 냥이들을 조용히 시키자 ㅋㅋ")
+    .setDescription("시끄러운 인간들을 조용히 시켜볼까? 콘콘!")
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption((option) =>
       option
         .setName("유저")
-        .setDescription("조용히 시킬 냥이를 고르라냥")
+        .setDescription("조용히 시킬 녀석을 골라봐!")
         .setRequired(true)
     )
     .addIntegerOption((option) =>
       option
         .setName("시간")
-        .setDescription("시간을 초 단위로 지정해주라냥 | (예시) 1분→60 ")
+        .setDescription("몇 초 동안 입을 막아버릴까? (예: 60)")
         .setRequired(true)
     )
     .addStringOption((option) =>
       option
         .setName("사유")
-        .setDescription("조용히 시키는 이유를 입력하라냥")
+        .setDescription("왜 조용히 시키는 거야? 사유를 적어!")
         .setRequired(true)
     ),
   /**
@@ -34,19 +34,19 @@ export default {
     const time = interaction.options.getInteger("시간");
 
     if (!member) {
-      return interaction.editReply({ content: "유저를 찾을 수 없다냥!" });
+      return interaction.editReply({ content: "흥! 그런 녀석은 이 숲에 없는데?" });
     }
 
     try {
       // time is in seconds, timeout expects milliseconds
       await member.timeout(time * 1000, reason);
       await interaction.editReply({
-        content: `**<@!${member.id}>** 유저가 ${time}초 동안 타임아웃 되었다냥! 사유: ${reason}`,
+        content: `**<@!${member.id}>**! 넌 너무 시끄러워서 ${time}초 동안 강제로 조용히 하게 했어! \n사유: ${reason}`,
       });
     } catch (e) {
       console.error(e);
       await interaction.editReply({
-        content: "권한이 부족하거나 오류가 발생해서 타임아웃을 할 수 없다냥!",
+        content: "흥, 내 영력이 부족한 건지 저 녀석이 너무 강한 건지 모르겠네! (권한 부족 혹은 오류)",
       });
     }
   },

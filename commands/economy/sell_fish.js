@@ -5,14 +5,14 @@ import FishingInventory from "../../models/FishingInventory.js";
 export default {
     data: new SlashCommandBuilder()
         .setName("판매")
-        .setDescription("가방에 있는 물고기들을 나츠미에게 팔아 돈을 번다냥!"),
+        .setDescription("가방에 든 생선들을 나츠미한테 팔아봐! (흥, 내가 특별히 사줄게!)"),
     async execute(interaction) {
         const userId = interaction.user.id;
 
         const inventory = await FishingInventory.findOne({ userId });
         if (!inventory || (inventory.goldenFish === 0 && inventory.decentGoldenFish === 0 && inventory.mediumFish === 0 && inventory.regularFish === 0 && inventory.curiousItem === 0)) {
             return interaction.reply({
-                content: "팔 물건이 하나도 없다냥! 낚시부터 하고 와라냥!",
+                content: "팔 물건이 하나도 없잖아! 낚시부터 하고 오든가! 바보야!",
                 ephemeral: true
             });
         }
@@ -65,17 +65,17 @@ export default {
         await inventory.save();
 
         const embed = new EmbedBuilder()
-            .setTitle("💰 나츠미의 수산시장 정산")
-            .setDescription(`오오! 물건들이 꽤 싱싱하다냥. 나츠미가 전부 매입해주겠다냥!`)
+            .setTitle("🏮 나츠미의 수산시장 정산")
+            .setDescription(`콘콘! 가져온 물건들이 꽤 싱싱하네? 내가 다 사줄 테니까 고맙게 생각하라구!`)
             .addFields(
-                { name: "판매 수량", value: `총 \`${totalCount}\` 개`, inline: true },
-                { name: "판매 합계", value: `\`${subtotal.toLocaleString()}\` 원`, inline: true },
-                { name: "대량 판매 보너스", value: `\`${bonusPercent}%\` (+\`${bonusAmount.toLocaleString()}\` 원)`, inline: true },
-                { name: "최종 입금액", value: `**\`${finalPrice.toLocaleString()}\` 원**`, inline: false }
+                { name: "🏮 가져온 것들", value: `총 \`${totalCount}\` 개`, inline: true },
+                { name: "💰 물건 값", value: `\`${subtotal.toLocaleString()}\` 냥`, inline: true },
+                { name: "✨ 덤 (보너스)", value: `\`${bonusPercent}%\` (+\`${bonusAmount.toLocaleString()}\` 냥)`, inline: true },
+                { name: "💳 최종 주머니", value: `**\`${finalPrice.toLocaleString()}\` 냥**`, inline: false }
             )
-            .setColor("Green")
+            .setColor("#FF7F50")
             .setThumbnail("https://cdn-icons-png.flaticon.com/512/2311/2311915.png")
-            .setFooter({ text: "번 돈으로 또 낚싯대를 사거나 도박(...)을 해도 좋다냥!" })
+            .setFooter({ text: "번 돈으로 맛있는 거 사 먹든가, 다시 운을 시험해 보든가! 흥!" })
             .setTimestamp();
 
         return interaction.reply({ embeds: [embed] });

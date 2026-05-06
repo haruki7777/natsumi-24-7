@@ -10,7 +10,7 @@ export default {
   async execute(interaction, client) {
     // DM Block
     if (interaction.channel?.type === ChannelType.DM) {
-      const msg = "**봇의 기능은 서버 내에서만 사용하실 수 있습니다냥!**";
+      const msg = "**흥! 숲 밖에서는 내 힘을 쓸 수 없어! (서버 내에서만 사용 가능)**";
       if (interaction.isRepliable()) {
         return interaction.reply({ content: msg, ephemeral: true });
       }
@@ -42,7 +42,7 @@ export default {
         }
       } catch (error) {
         console.error(`Error executing command ${interaction.commandName}:`, error);
-        const errorMsg = "**명령어 실행 중 오류가 발생했다냥!**";
+        const errorMsg = "**으윽... 명령어를 쓰려다 영력이 꼬였어! (오류 발생) 콘콘!**";
         try {
           if (interaction.deferred || interaction.replied) {
             await interaction.editReply({ content: errorMsg }).catch(() => {});

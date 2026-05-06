@@ -25,9 +25,9 @@ import Schema from "../models/ticketDB.js";
           embeds: [
             new EmbedBuilder()
               .setDescription(
-                `${interaction.user.username}님은 이미 진행중인 티켓이 있다냥 ${channel1}`
+                `흥! 이미 나랑 대화하고 있는 방이 있잖아! 저기로 가라고! ${channel1}`
               )
-              .setColor("Red"),
+              .setColor("#FF7F50"),
           ],
           ephemeral: true,
         });
@@ -48,25 +48,25 @@ import Schema from "../models/ticketDB.js";
         ],
       });
       channel.send({
-        content: find.message,
+        content: `<@${interaction.user.id}>, ${find.message}`,
         embeds: [
           new EmbedBuilder()
             .setAuthor({
-              name: `${interaction.user.tag}`,
+              name: `${interaction.user.username}`,
               iconURL: `${interaction.user.displayAvatarURL({ dynamic: true })}`,
             })
-            .setTitle("티켓 생성됨")
-            .setColor("Orange")
-            .setDescription(`${UserName}님의 티켓이 생성되었다냥`),
+            .setTitle("🏮 소통의 문이 열렸어")
+            .setColor("#FF7F50")
+            .setDescription(`${UserName} 녀석이 나를 찾아왔어! 콘콘!`),
         ],
         components: [
           new ActionRowBuilder({
             components: [
               new ButtonBuilder()
                 .setCustomId("close")
-                .setLabel("티켓 닫기")
+                .setLabel("대화 종료")
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji("💥"),
+                .setEmoji("🏮"),
             ],
           }),
         ],
@@ -74,8 +74,8 @@ import Schema from "../models/ticketDB.js";
       interaction.reply({
         embeds: [
           new EmbedBuilder()
-            .setColor("Random")
-            .setDescription(`${channel} 채널로 이동하라냥`),
+            .setColor("#FF7F50")
+            .setDescription(`저기 ${channel} 채널로 가봐. 별로 기다린 건 아니니까! 흥!`),
         ],
         ephemeral: true,
       });

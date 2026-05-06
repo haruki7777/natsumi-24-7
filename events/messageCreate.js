@@ -81,7 +81,7 @@ export default {
     // 0. Intent Check (If mentioned but content is empty)
     if (isMentioned && content.length === 0) {
         return message.reply({
-            content: "츤! 멘션만 덜렁 보내면 어쩌라는 거야? 내가 네 속마음이라도 꿰뚫어 볼 수 있는 여우인 줄 알아? ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ\n\n> **도움말:** 나츠미가 단어(츠미야 등)만으로 응답하게 하려면 Discord Developer Portal에서 **Message Content Intent**를 활성화해야 한다냥!",
+            content: "츤! 멘션만 덜렁 보내면 어쩌라는 거야? 내가 네 속마음이라도 꿰뚫어 볼 수 있는 여우인 줄 알아? ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ\n\n> **도움말:** 나츠미가 단어(츠미야 등)만으로 응답하게 하려면 Discord Developer Portal에서 **Message Content Intent**를 활성화해야 한다구!",
         }).catch(() => {});
     }
 
@@ -191,9 +191,9 @@ export default {
         
     } catch (error) {
         if (error.message === "QUOTA_EXCEEDED") {
-            await message.reply("지금은 좀 바쁘거든?! 나중에 다시 말 걸어! (API 사용량이 초과됐다냥, 잠시 후 다시 시도해달라냥!)").catch(() => {});
+            await message.reply("지금은 좀 바쁘거든?! 나중에 다시 말 걸어! (영력이 다 떨어졌어! 잠시 후에 다시 시도해!)").catch(() => {});
         } else if (error.message === "SAFETY_BLOCK") {
-            await message.reply("변태! 그런 이상한 말에 내가 대답해줄 줄 알아?! (AI 안전 필터에 의해 차단된 문장이다냥!)").catch(() => {});
+            await message.reply("변태! 그런 이상한 말에 내가 대답해줄 줄 알아?! (불쾌한 기운이 감돌고 있어! 말조심해!)").catch(() => {});
         } else {
             console.error(`[GeminiError]`, error);
             await message.reply("...흥, 나중에 얘기해!").catch(() => {});

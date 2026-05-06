@@ -19,11 +19,11 @@ export default {
     // Strict Validation: Check if it's a valid Natsumi vote message
     const isBotAuthor = message.author.id === interaction.client.user.id;
     const originalEmbed = message.embeds[0];
-    const isVoteTitle = originalEmbed?.data?.title === "📊 나츠미의 실시간 투표";
+    const isVoteTitle = originalEmbed?.data?.title === "📊 나츠미의 공정한 투표소";
 
     if (!isBotAuthor || !isVoteTitle) {
       return interaction.editReply({
-        content: `❌ **이 메시지는 나츠미가 생성한 투표 메시지가 아니다냥!**\n나츠미의 \`/투표\` 명령어로 만든 메시지에만 이 기능을 사용할 수 있다냥.`,
+        content: `❌ **이 메시지는 나츠미가 생성한 투표 메시지가 아니야!**\n나츠미의 \`/투표\` 명령어로 만든 메시지에만 이 기능을 사용할 수 있다구! 콘콘!`,
       });
     }
 
@@ -48,21 +48,21 @@ export default {
     const topic = originalEmbed?.description?.split('\n')[0] || "**[주제 정보 없음]**";
 
     const embed = new EmbedBuilder()
-      .setTitle("🏁 투표 결과 발표")
-      .setDescription(`${topic}\n\n투표가 성공적으로 마감되었다냥! 결과는 아래와 같다냥.`)
+      .setTitle("🏁 투표 집계 완료! 콘콘!")
+      .setDescription(`${topic}\n\n투표가 성공적으로 마감됐어! 결과는 아래를 확인하라구.`)
       .setThumbnail(interaction.client.user.displayAvatarURL())
       .setTimestamp();
 
     let resultText = "";
     if (good_count > bad_count) {
       embed.setColor("#2ECC71"); // Green
-      resultText = "✅ **찬성 승리!** 의견이 수렴되었다냥.";
+      resultText = "✅ **찬성 승리!** 다들 마음이 잘 맞네? 흥!";
     } else if (bad_count > good_count) {
       embed.setColor("#E74C3C"); // Red
-      resultText = "❌ **반대 승리!** 의견이 기각되었다냥.";
+      resultText = "❌ **반대 승리!** 역시 세상은 내 맘대로 안 된다니까?";
     } else {
       embed.setColor("#95A5A6"); // Grey
-      resultText = "⚖️ **무승부!** 의견이 팽팽하다냥.";
+      resultText = "⚖️ **무승부!** 이렇게 팽팽할 줄은 몰랐는걸?";
     }
 
     embed.addFields(
@@ -73,6 +73,6 @@ export default {
     );
 
     await message.edit({ embeds: [embed] });
-    await interaction.editReply({ content: `**개표가 완료되었다냥! 결과를 확인해 주라냥.**` });
+    await interaction.editReply({ content: `**개표 완료! 결과를 확인해 봐. 별로 기다린 건 아냐!**` });
   },
 };

@@ -9,7 +9,7 @@ import dobak_Schema from "../../models/dobak.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("돈받기")
-    .setDescription(`도박을 할 수 있는 돈 ${moneygiveamount}원을 드린다냥`),
+    .setDescription(`도박... 아니, 활동 자금 ${moneygiveamount.toLocaleString()} 냥을 줄게! 콘콘!`),
   /**
    *
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
@@ -28,13 +28,13 @@ export default {
         embeds: [
           new EmbedBuilder()
             .setDescription(
-              `**돈받기 쿨타임이 적용 중이에요!! (<t:${
+              `**넌 무슨 돈을 그렇게 자주 받아가려고 해? 바보야? (<t:${
                 dobak_find.date + Number(moneycooltime)
-              }:R>) 다시 시도해라냥**`
+              }:R>) 이후에 다시 오라구! 흥!**`
             )
-            .setColor("Red")
+            .setColor("#ED4245")
             .setAuthor({
-              name: `${interaction.user.tag}`,
+              name: `${interaction.user.username}`,
               iconURL: `${interaction.user.displayAvatarURL({
                 dynamic: true,
               })}`,
@@ -66,23 +66,24 @@ export default {
           .exec()
       ).findIndex((i) => i.userid == interaction.user.id) + 1;
     const embed = new EmbedBuilder()
-      .setColor("Blue")
+      .setColor("#FF7F50")
       .setDescription(
-        `**${interaction.user.username}님! \`${moneygiveamount.toLocaleString(
+        `**${interaction.user.username}! 특별히 \`${moneygiveamount.toLocaleString(
           "ko-KR"
-        )}\`원을 지급해드렸다냥!!**`
+        )}\` 냥을 빌려주는 거야. \n딱히 널 걱정해서 주는 건 아니니까 착각하지 마! 콘콘!**`
       )
       .addFields(
         {
-          name: "잔액",
-          value: `${(
+          name: "💰 현재 주머니",
+          value: `\`${(
             (dobak_find?.money || 0) + Number(moneygiveamount)
-          ).toLocaleString("ko-KR")}원`,
+          ).toLocaleString("ko-KR")}\` 냥`,
+          inline: true
         },
-        { name: "순위", value: `${ranking}위` }
+        { name: "🏆 숲의 위계", value: `${ranking} 위`, inline: true }
       )
       .setAuthor({
-        name: `${interaction.user.tag}`,
+        name: `${interaction.user.username}`,
         iconURL: `${interaction.user.displayAvatarURL({ dynamic: true })}`,
       });
     interaction.editReply({ embeds: [embed] });

@@ -5,11 +5,11 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("애니짤")
-    .setDescription("귀여운 애니메이션 이미지를 보여준다냥!")
+    .setDescription("귀여운 애니메이션 이미지를 보여줄게! 콘콘!")
     .addStringOption((option) =>
       option
         .setName("카테고리")
-        .setDescription("보고 싶은 짤의 카테고리를 선택해 주세요")
+        .setDescription("어떤 종류의 이미지를 보고 싶어?")
         .setRequired(true)
         .addChoices(
           { name: "와이프 (Waifu)", value: "waifu" },
@@ -134,16 +134,17 @@ export default {
       if (!imageUrl) throw new Error("Image not found");
 
       const embed = new EmbedBuilder()
-        .setTitle(`✨ ${category}!! 귀엽다냥!`)
+        .setTitle(`✨ ${category}!! 어때, 귀엽지?`)
         .setImage(imageUrl)
-        .setFooter({ text: `Source: ${source} | 나츠미 봇` })
+        .setAuthor({ name: "숲의 화랑", iconURL: interaction.client.user.displayAvatarURL() })
+        .setFooter({ text: `영력 소모: ${source} | 나츠미의 보관함` })
         .setTimestamp()
-        .setColor("Random");
+        .setColor("#FF7F50");
 
       await interaction.editReply({ embeds: [embed] });
     } catch (err) {
       console.error(err);
-      interaction.editReply({ content: "**이미지 서버가 불안정하다냥! 다시 시도해 달라냥!**" });
+      interaction.editReply({ content: "**으익! 이미지 서버에 안개가 꼈어! (오류 발생) 나중에 다시 해봐! 흥!**" });
     }
   },
 };

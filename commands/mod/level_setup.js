@@ -11,18 +11,18 @@ import {
     data: new SlashCommandBuilder()
       .setName("레벨설정")
       .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-      .setDescription("레벨업 설정을 한다냐")
+      .setDescription("우리 숲의 서열 시스템을 관리할 거야! 콘콘!")
       .addStringOption((option) =>
         option
           .setName("상태")
-          .setDescription("시스템을 킨다냥")
-          .addChoices({ name: "온", value: "온" }, { name: "오프", value: "오프" })
+          .setDescription("시스템을 작동시킬까?")
+          .addChoices({ name: "작동(ON)", value: "온" }, { name: "중단(OFF)", value: "오프" })
       )
       .addStringOption((option) =>
         option
           .setName("배경화면")
           .setDescription(
-            "랭킹 배경을 바꾼다냥! (유효한 링크여야한다냥! )"
+            "서열 카드의 배경을 바꿔봐! (이미지 주소여야 해!)"
           )
           .setMinLength(2)
       ),
@@ -35,10 +35,10 @@ import {
       const { options, guild } = interaction;
   
       const Response = new EmbedBuilder()
-        .setColor(`Orange`)
-        .setTitle("✨ 설정")
+        .setColor(`#FF8C00`)
+        .setTitle("🏮 서열 시스템 설정")
         .setTimestamp(Date.now())
-        .setDescription("여기서 현재 설정을 볼 수 있습니다!");
+        .setDescription("여기서 현재 숲의 서열 설정을 볼 수 있어!");
   
       const background = options.getString("배경화면");
       const level_enabled = await featuresDB.findOne({ GuildID: guild.id });
@@ -58,11 +58,11 @@ import {
               { new: true, upsert: true }
             );
   
-            Response.setDescription("🖼️ 새로운 배경화면 설정!").setImage(
+            Response.setDescription("🖼️ 새로운 풍경(배경)으로 바꿨어! 콘콘!").setImage(
               background
             );
           } else {
-            Response.setDescription("❌ `배경화면` 유효한 링크여야 한다냥!");
+            Response.setDescription("❌ `배경화면`은 제대로 된 링크여야 한다구! 바보야?");
             return interaction.reply({
               embeds: [Response],
               ephemeral: true,
@@ -87,7 +87,7 @@ import {
               );
   
               Response.setDescription(
-                "✅ 레벨 시스템을 성공적으로 활성화했다냥!"
+                "✅ 이제부터 활동하면 서열이 오를 거야! 콘콘!"
               );
             }
             break;
@@ -108,7 +108,7 @@ import {
               );
   
               Response.setDescription(
-                "✅ 레벨 시스템을 성공적으로 비활성화했다냥!"
+                "✅ 서열 경쟁을 멈췄어. 다들 평화롭게 지내라구! 흥!"
               );
             }
             break;
@@ -126,7 +126,7 @@ import {
           { new: true, upsert: true }
         );
         Response.setDescription(
-          "레벨 시스템을 설정하고, `/레벨설정 상태: 온`을 사용하여 키라냥,  '/레벨설정 배경화면: 'url''을 사용하여 랭크카드 배경을 변경하라냥!"
+          "서열 시스템을 먼저 초기화했어. `/레벨설정 상태: 온`으로 시스템을 켜보든가! 배경은 `/레벨설정 배경화면:`으로 바꾸면 돼. 콘콘!"
         );
       }
   

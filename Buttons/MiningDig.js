@@ -122,11 +122,11 @@ export default {
             .setTitle(mineCategory)
             .setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
             .setDescription(winMultiplier === -1 
-                ? `💀 **바보! 꽝이야!** \`${itemName}\`만 나오고 주변이 다 무너졌잖아!\n\n건 판돈 \`${bettingMoney.toLocaleString()}\`냥은 내가 맛있게 먹을게! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`
+                ? `💀 **바보! 꽝이야!** \`${itemName}\`만 나오고 주변이 다 무너졌잖아!\n\n건 판돈 \`${bettingMoney.toLocaleString()}\`금전은 내가 맛있게 먹을게! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`
                 : `🎊 **대... 대박이네?** 🎊\n\n\`${itemName}\`을(를) 무려 **${quantity}개**나 찾아냈어!\n\n**별로 네가 잘해서 나온 건 아니니까 우쭐대지 마!** \n총 **${winMultiplier.toFixed(1)}배** 수익이야. 관리 잘 하라구!`)
             .addFields(
-                { name: "💰 주머니 변화", value: `\`${(netGain > 0 ? "+" : "") + netGain.toLocaleString()}\` 냥`, inline: true },
-                { name: "💳 총 주머니", value: `\`${(userData.money + netGain).toLocaleString()}\` 냥`, inline: true }
+                { name: "💰 주머니 변화", value: `\`${(netGain > 0 ? "+" : "") + netGain.toLocaleString()}\` 금전`, inline: true },
+                { name: "💳 총 주머니", value: `\`${(userData.money + netGain).toLocaleString()}\` 금전`, inline: true }
             )
             .setColor(color)
             .setTimestamp()

@@ -8,7 +8,7 @@ export default {
       if (command) {
           await command.execute(interaction);
       } else {
-          await interaction.reply({ content: "**인증 명령어를 찾을 수 없다냥!**", ephemeral: true });
+          await interaction.reply({ content: "**으악! 인증 시스템에 문제가 생겼어! (명령어 찾기 실패) 콘콘!**", ephemeral: true });
       }
     },
   };

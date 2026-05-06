@@ -5,12 +5,12 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("nsfw")
-    .setDescription("NSFW 이미지를 보여준다냥 (후방주의!)")
+    .setDescription("흥! 인간들의 은밀한 취향을 내가 보여줄게! (후방주의!)")
     .setNSFW(true) // Ensure Discord marks this properly
     .addStringOption((option) =>
       option
         .setName("카테고리")
-        .setDescription("보고 싶은 NSFW 카테고리를 선택해라냥!")
+        .setDescription("어떤 이상한 걸 보고 싶은 거야? 변태!")
         .setRequired(true)
         .addChoices(
           { name: "🔞 헨타이 (Hentai)", value: "hentai" },
@@ -33,7 +33,7 @@ export default {
     // Secondary check for NSFW channel
     if (!interaction.channel || !interaction.channel.nsfw) {
       return interaction.editReply({
-        content: "⚠️ **이 명령어는 NSFW 채널에서만 사용할 수 있다냥!**",
+        content: "⚠️ **여기는 공공장소야! 이런 건 부끄러운 채널(NSFW)에서나 하라구!**",
         ephemeral: true
       });
     }
@@ -120,17 +120,17 @@ export default {
       if (!imageUrl) throw new Error("Could not fetch any NSFW image from all providers");
 
       const embed = new EmbedBuilder()
-        .setTitle(`🔞 당신은 변태인거냐냥?! (${category})`)
-        .setDescription(`**후방주의 하라냥!** <a:KemomimiDance:1048568057599119370>`)
+        .setTitle(`🔞 너, 진짜 변태인 거 아니야?! (${category})`)
+        .setDescription(`**뒤를 조심해! 누가 보고 있을지도 모르니까! 콘콘!** <a:KemomimiDance:1048568057599119370>`)
         .setImage(imageUrl)
-        .setFooter({ text: `Source: ${apiUsed} | 나츠미 봇 v5.9.5` })
+        .setFooter({ text: `Source: ${apiUsed} | 나츠미의 시크릿 갤러리` })
         .setTimestamp()
-        .setColor("Red");
+        .setColor("#FF0000");
 
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       console.error("NSFW Final Error:", error.message);
-      await interaction.editReply({ content: "**모든 데이터 서버가 응답하지 않는다냥! (v5.9.5)**" });
+      await interaction.editReply({ content: "**모든 데이터 기운이 끊겼어! (서버 응답 없음) 흥!**" });
     }
   },
 };
