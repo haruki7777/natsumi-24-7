@@ -5,7 +5,7 @@ import FishingInventory from "../../models/FishingInventory.js";
 export default {
     data: new SlashCommandBuilder()
         .setName("낚시")
-        .setDescription("강가에서 물고기를 낚아보자냥! (5초 반응 필수!)"),
+    .setDescription("콘콘! 강가에서 물고기를 낚아보자! (주의: 여우는 생선을 아주 좋아해!)"),
     async execute(interaction) {
         const userId = interaction.user.id;
         const cooldownTime = 30 * 1000; // 30 seconds
@@ -20,7 +20,7 @@ export default {
         if (now - inventory.lastFishingTime < cooldownTime) {
             const remaining = Math.ceil((cooldownTime - (now - inventory.lastFishingTime)) / 1000);
             return interaction.reply({
-                content: `너무 자주 낚시하면 물고기가 도망간다냥! \`${remaining}\`초 후에 다시 시도해라냥!`,
+                content: `**급할수록 돌아가라고!** 물고기들도 쉴 시간이 필요하단 말야. \`${remaining}\`초 후에 다시 오든가! 흥!`,
                 ephemeral: true
             });
         }
@@ -29,7 +29,7 @@ export default {
         let userData = await dobak_Schema.findOne({ userid: userId });
         if (!userData) {
             return interaction.reply({
-                content: "나츠미 뱅크에 계좌가 없다냥! `/출석체크`로 먼저 가입하고 돈을 받아라냥!",
+                content: "누구신지? 숲에 이름도 안 적어놓고 낚시를 하겠다구? `/출석체크`부터 하고 와!",
                 ephemeral: true
             });
         }
@@ -40,10 +40,10 @@ export default {
 
         const initialEmbed = new EmbedBuilder()
             .setTitle("🎣 낚시 시작!")
-            .setDescription("나츠미가 낚싯대를 던졌다냥... 물고기가 입질할 때까지 가만히 기다려라냥.")
-            .setColor("Blue")
+            .setDescription("나츠미가 낚싯대를 던졌어... 물고기가 입질할 때까지 조용히 해! 🦊")
+            .setColor("#FF7F50")
             .setThumbnail("https://cdn-icons-png.flaticon.com/512/2855/2855140.png")
-            .setFooter({ text: "입질이 오면 5초 안에 버튼을 눌러야 한다냥!" });
+            .setFooter({ text: "입질이 오면 5초 안에 버튼을 눌러! 안 누르면 꼬리로 때릴 거야!" });
 
         await interaction.reply({ embeds: [initialEmbed] });
 
@@ -55,15 +55,15 @@ export default {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('reel_in')
-                        .setLabel('지금이다! 낚아올리기!!')
-                        .setEmoji('🎣')
-                        .setStyle(ButtonStyle.Primary)
+                        .setLabel('지금이야! 잡아당겨!!')
+                        .setEmoji('🦊')
+                        .setStyle(ButtonStyle.Success)
                 );
 
             const biteEmbed = new EmbedBuilder()
-                .setTitle("❗ 입질이 왔다냥!")
-                .setDescription("지금이다냥!! 물속에서 엄청난 힘이 느껴진다냥! 빨리 낚아올려라냥!!!")
-                .setColor("Yellow")
+                .setTitle("❗ 지금이야, 바보야!")
+                .setDescription("엄청난 힘이 느껴진다구!! 빨리 낚아올려! 뭐 해!!!")
+                .setColor("#FFD700")
                 .setThumbnail("https://cdn-icons-png.flaticon.com/512/3241/3241951.png");
 
             const response = await interaction.editReply({
@@ -79,7 +79,7 @@ export default {
 
             collector.on('collect', async (i) => {
                 if (i.user.id !== userId) {
-                    return i.reply({ content: "남의 낚싯대를 건드리면 안 된다냥!", ephemeral: true });
+                    return i.reply({ content: "**남의 생선을 탐내다니!** 정말 매너 없네! 콘콘!", ephemeral: true });
                 }
 
                 collector.stop('success');
@@ -92,17 +92,17 @@ export default {
                     let fishType = "";
                     let bonus = 0;
                     let field = "";
-                    let color = "Green";
+                    let color = "#FF7F50";
 
                     const itemLists = {
                         golden: [
-                            "✨ 전설의 황금 연어", "✨ 고대 황금 잉어", "✨ 신화 속 황금 고래", "✨ 은하수 황금 참치", "✨ 영원한 생명의 황금어",
+                            "✨ 전설의 황금 나츠미 연어", "✨ 여우신의 보물 황금 잉어", "✨ 신화 속 황금 고래", "✨ 은하수 황금 참치", "✨ 영원한 생명의 황금어",
                             "✨ 바다의 심장 황금 상어", "✨ 태양을 삼킨 황금 멸치", "✨ 아틀란티스의 황금 장어", "✨ 보석 박힌 황금 가오리", "✨ 투명한 황금 복어",
                             "✨ 거대 황금 문어", "✨ 신성한 황금 도미", "✨ 전설의 황금 돗돔", "✨ 꿈을 먹는 황금 갈치", "✨ 황금 비늘의 농어",
                             "✨ 천년 묵은 황금 거북", "✨ 바다 신의 황금 삼치", "✨ 보물 지도를 품은 황금 조기", "✨ 영롱한 빛의 황금 민어", "✨ 궁극의 황금 블랙배스"
                         ],
                         decentGolden: [
-                            "🌟 반짝이는 황금 미꾸라지", "🌟 작지만 빛나는 황금 송어", "🌟 그럭저럭 큰 황금 우럭", "🌟 평범한 황금 고등어", "🌟 빛바랜 황금 광어",
+                            "🌟 반짝이는 나츠미 미꾸라지", "🌟 작지만 빛나는 황금 송어", "🌟 그럭저럭 큰 황금 우럭", "🌟 평범한 황금 고등어", "🌟 빛바랜 황금 광어",
                             "🌟 인공 황금 도루묵", "🌟 어린 황금 방어", "🌟 도금된 황금 망둥어", "🌟 노란빛 황금 꽁치", "🌟 황색 황금 전어",
                             "🌟 샛노란 황금 정어리", "🌟 장식용 황금 비단잉어", "🌟 연한 황금빛 숭어", "🌟 반짝이는 황금 빙어", "🌟 금빛 도는 황금 가재",
                             "🌟 금색 무늬 황금 해파리", "🌟 유행하는 황금 조개", "🌟 나츠미가 색칠한 황금 물고기", "🌟 유리 조각 같은 황금 빙어", "🌟 보석 눈을 가진 황금 붕어"
@@ -137,7 +137,7 @@ export default {
 
                     if (chance <= 0.5) {
                         fishType = getRandomItem(itemLists.golden);
-                        bonus = 100000; // Increased bonus for legend
+                        bonus = 100000;
                         field = "goldenFish";
                         color = "#FFD700";
                     } else if (chance <= 1.5) {
@@ -178,15 +178,15 @@ export default {
                     );
 
                     const successEmbed = new EmbedBuilder()
-                        .setTitle("🎉 낚시 성공!")
-                        .setDescription(`축하한다냥!! **${fishType}**(을)를 낚아올렸다냥!`)
+                        .setTitle("🎉 낚시 성공! 콘콘!")
+                        .setDescription(`**${fishType}**을(를) 낚아올리다니, 제법이네? \n**별로 널 칭찬하는 건 아니니까 착각하지 마!** ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
                         .addFields(
-                            { name: "획득 보너스", value: `\`${bonus.toLocaleString()}\`원`, inline: true },
-                            { name: "나츠미 뱅크 잔액", value: `\`${(userData.money + bonus).toLocaleString()}\`원`, inline: true }
+                            { name: "💰 챙겨준 냥", value: `\`${bonus.toLocaleString()}\` 냥`, inline: true },
+                            { name: "💳 총 주머니", value: `\`${(userData.money + bonus).toLocaleString()}\` 냥`, inline: true }
                         )
                         .setColor(color)
                         .setThumbnail("https://cdn-icons-png.flaticon.com/512/1152/1152912.png")
-                        .setFooter({ text: "가방에 잘 보관해뒀다냥! 나중에 판매해라냥~" });
+                        .setFooter({ text: "가방에 잘 넣어뒀어! 내 생선은... 없네? 흥!" });
 
                     await interaction.editReply({ embeds: [successEmbed], components: [] });
 
@@ -199,15 +199,15 @@ export default {
                     );
 
                     const failEmbed = new EmbedBuilder()
-                        .setTitle("❌ 낚시 실패...")
-                        .setDescription("너무 늦었다냥!! 물고기가 낚싯대를 끌고 도망가버렸다냥...")
+                        .setTitle("❌ 낚시 실패... 한심해!")
+                        .setDescription("바보야! 그렇게 굼떠서 어떡해? 물고기가 비웃으면서 도망갔잖아! 콘콘!")
                         .addFields(
-                            { name: "패널티 (장비 수리비)", value: `\`-${penalty.toLocaleString()}\`원`, inline: true },
-                            { name: "나츠미 뱅크 잔액", value: `\`${Math.max(0, userData.money - penalty).toLocaleString()}\`원`, inline: true }
+                            { name: "💸 수리비 패널티", value: `\`-${penalty.toLocaleString()}\` 냥`, inline: true },
+                            { name: "💳 남은 주머니", value: `\`${Math.max(0, userData.money - penalty).toLocaleString()}\` 냥`, inline: true }
                         )
-                        .setColor("Red")
+                        .setColor("#ED4245")
                         .setThumbnail("https://cdn-icons-png.flaticon.com/512/1198/1198402.png")
-                        .setFooter({ text: "반응 속도를 더 키워와라냥!" });
+                        .setFooter({ text: "잠이 덜 깬 거야? 정신 똑바로 차려!" });
 
                     await interaction.editReply({ embeds: [failEmbed], components: [] });
                 }

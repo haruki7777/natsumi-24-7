@@ -6,7 +6,7 @@ import dobak_Schema from "../../models/dobak.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("순위")
-    .setDescription("도박 순위를 보여준다냥!"),
+    .setDescription("이 숲에서 누가 제일 부자인지 보여줄게! (별로 안 궁금하겠지만!)"),
   /**
    *
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
@@ -20,12 +20,13 @@ export default {
       .exec();
       
     if (find.length == 0) {
-      return interaction.editReply({ content: `**순위 정보가 없다냥!**` });
+      return interaction.editReply({ content: `**흥! 아직 주머니에 먼지만 가득한가 봐? (기록 없음)**` });
     }
     
     const embed = new EmbedBuilder()
-      .setTitle("🏆 도박 순위표 (Top 10)")
-      .setColor("Gold")
+      .setTitle("🏆 숲의 지존 부자들 (Top 10)")
+      .setDescription("이 녀석들은 대체 뭘 하고 다니길래 돈이 이렇게 많아? \n나한테 주지도 않을 거면서 말이야! 콘콘!")
+      .setColor("#FFD700")
       .setTimestamp();
       
     for (let i = 0; i < find.length; i++) {
@@ -35,13 +36,13 @@ export default {
           embed.setThumbnail(user.displayAvatarURL({ dynamic: true }));
         }
         embed.addFields({
-          name: `${i + 1}. ${user.tag}`,
-          value: `**${(find[i].money || 0).toLocaleString("ko-KR")}**원`,
+          name: `${i === 0 ? '🦊' : i + 1 + '.'} ${user.username}`,
+          value: `**${(find[i].money || 0).toLocaleString("ko-KR")}** 냥`,
         });
       } catch (e) {
         embed.addFields({
-          name: `${i + 1}. 알 수 없는 유저`,
-          value: `**${(find[i].money || 0).toLocaleString("ko-KR")}**원`,
+          name: `${i + 1}. 어딘가의 인간`,
+          value: `**${(find[i].money || 0).toLocaleString("ko-KR")}** 냥`,
         });
       }
     }

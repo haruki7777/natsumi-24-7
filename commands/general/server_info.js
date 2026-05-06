@@ -48,42 +48,43 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("서버정보")
-    .setDescription("서버정보를 확인한다냥!"),
+    .setDescription("이 숲에 대해 알고 싶어? (흥, 별로 대단한 곳도 아니구먼!)"),
   async execute(interaction) { 
     await interaction.deferReply();
     const owner = await interaction.guild.fetchOwner();
     const MainEmbed = new EmbedBuilder()
-      .setTitle(`${interaction.guild.name} 서버의 정보`)
+      .setTitle(`🦊 ${interaction.guild.name} 숲의 기록`)
       .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
       .addFields(
-        { name: "서버 아이디", value: `**${interaction.guild.id}**`, inline: true },
+        { name: "🏮 숲의 고유 번호", value: `\`${interaction.guild.id}\``, inline: true },
         {
-          name: "서버 주인",
-          value: `**<@${owner.id}> (${owner.user.tag})**`,
+          name: "👑 숲의 지배자",
+          value: `<@${owner.id}> \n(${owner.user.tag})`,
           inline: true,
         },
-        { name: "서버 인원", value: `**${interaction.guild.memberCount}명**`, inline: true },
+        { name: "👥 모여있는 인간들", value: `**${interaction.guild.memberCount}** 명`, inline: true },
         {
-          name: "서버 부스트",
-          value: `**${interaction.guild.premiumSubscriptionCount}번 (${interaction.guild.premiumTier}레벨)**`,
+          name: "💎 숲의 영력 (부스트)",
+          value: `**${interaction.guild.premiumSubscriptionCount}** 회 \n(Lv. **${interaction.guild.premiumTier}**)`,
           inline: true,
         },
         {
-          name: "서버 언어",
+          name: "🗣️ 주 사용 언어",
           value: `**${lang_trans[interaction.guild.preferredLocale] || interaction.guild.preferredLocale}**`,
           inline: true,
         },
         {
-          name: "서버 보안",
+          name: "🛡️ 결계 강도 (보안)",
           value: `**${ServerAuthLevel[interaction.guild.verificationLevel]}**`,
           inline: true,
         },
         {
-          name: "서버 생성일",
-          value: `**<t:${Math.round(interaction.guild.createdTimestamp / 1000)}:f>**`,
+          name: "📅 숲이 생겨난 날",
+          value: `<t:${Math.round(interaction.guild.createdTimestamp / 1000)}:f>`,
         }
       )
-      .setColor("Orange");
+      .setColor("#FF7F50")
+      .setFooter({ text: "이런 정보를 알아서 뭐 하게? 바보!" });
     interaction.editReply({ embeds: [MainEmbed] });
   },
 };

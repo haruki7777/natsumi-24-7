@@ -32,18 +32,23 @@ export default {
     const apiStatus = apiLatency < 300 ? "🟢" : (apiLatency < 600 ? "🟠" : "🔴");
     const uptime = Math.round(client.readyTimestamp / 1000);
 
+    const embedColor = gatewayPing < 150 ? "#57F287" : (gatewayPing < 300 ? "#FEE75C" : "#ED4245");
+
     const embed = new EmbedBuilder()
-      .setTitle("🦊 Natsumi Vulpine Health Check")
-      .setDescription(`콘콘~! 당신이 궁금해하는 것 같아서 특별히 보여주는 거야. 여우의 눈은 속일 수 없거든! 괜히 감동받아서 꼬리 흔들지 마! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
-      .setColor("#FF7F50") // Coral
+      .setTitle("🦊 나츠미의 여우령 시스템 점검")
+      .setDescription(`콘콘~! 네가 궁금해 죽으려고 하길래 특별히 보여주는 거야. \n여우의 눈은 속일 수 없다는 걸 명심해! \n**감동받아서 나한테 매달리지나 마!** ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
+      .setColor("#FF8C00") 
       .setThumbnail(client.user.displayAvatarURL())
       .addFields(
-        { name: "🏮 Core Data", value: `\`\`\`yml\n이름: ${client.user.username}\n버전: v2.2.0 (Vulpine Core)\n상태: 최상 (운영 중)\`\`\``, inline: false },
-        { name: "🍃 Environment", value: `**OS:** ${os.type()}\n**Uptime:** <t:${uptime}:R>`, inline: true },
-        { name: "⚙️ Hardware", value: `**Memory:** ${usedMem}G / ${totalMem}G\n**Load:** ${memPercent}%`, inline: true },
-        { name: "📡 Network", value: `**WS:** ${gatewayPing}ms (${gatewayStatus})\n**API:** ${apiLatency}ms (${apiStatus})`, inline: true }
+        { name: "🏮 핵심 데이터 (Core)", value: `\`\`\`yml\n이름: ${client.user.username}\n버전: v2.3.2 (Vulpine Core)\n상태: 매우 쌩쌩함 (최고조)\`\`\``, inline: false },
+        { name: "\u200B", value: "\u200B", inline: false },
+        { name: "🍃 실행 환경", value: `**운영체제:** ${os.type()}\n**업타임:** <t:${uptime}:R>`, inline: true },
+        { name: "⚙️ 하드웨어", value: `**메모리:** ${usedMem}G / ${totalMem}G\n**부하량:** ${memPercent}%`, inline: true },
+        { name: "\u200B", value: "\u200B", inline: false },
+        { name: "📡 통신 상태", value: `**게이트웨이:** ${gatewayStatus} (${gatewayPing}ms)\n**응답 속도:** ${apiStatus} (${apiLatency}ms)`, inline: true },
+        { name: "🛰️ 네트워크", value: `**상태:** ${gatewayPing < 150 ? "완전 쾌적" : (gatewayPing < 300 ? "조금 느림" : "연결 불안")}\n**REST:** Stable`, inline: true }
       )
-      .setFooter({ text: "나츠미는 항상 너를... 아니, 서버를 감시하고 있어!" })
+      .setFooter({ text: "나츠미는 항상 너를... 아니, 서버를 감시하고 있어! 🦊" })
       .setTimestamp();
 
     await interaction.editReply({

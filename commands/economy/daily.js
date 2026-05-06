@@ -12,7 +12,7 @@ export default {
   data: new SlashCommandBuilder()
     .setName("출석체크")
     .setDescription(
-      `출석체크를 하고 돈 ${moneygiveamount.toLocaleString()}원과 경험치를 드린다냥!`
+      `콘콘! 출석 도장 받고 용돈(${moneygiveamount.toLocaleString()}냥)이랑 영력을 챙겨가라구!`
     ),
   /**
    *
@@ -49,12 +49,13 @@ export default {
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
+            .setTitle("🦊 이미 도장 찍었잖아!")
             .setDescription(
-              `**오늘 출석체크는 이미 완료했다냥! ㅋㅋㅋ 욕심쟁이 알박기 금지다냥!**\n\n⏰ **다음 리셋 (KST):** <t:${nextResetSeconds}:R> (<t:${nextResetSeconds}:F>)\n\n한국 표준시(KST) 기준 **매일 오전 9시**에 새로운 출석이 가능해진다냥! 조금만 더 기다려달라냥~!`
+              `**바보야! 오늘 이미 얼굴 비췄으면서 왜 또 와? 욕심이 너무 과하다구! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ**\n\n⏰ **다음 방문 시간:** <t:${nextResetSeconds}:R> (<t:${nextResetSeconds}:F>)\n\n오전 9시까지는 꼼짝 말고 기다려! 알았어?`
             )
-            .setColor("Red")
+            .setColor("#ED4245")
             .setAuthor({
-              name: `${interaction.user.tag}`,
+              name: `${interaction.user.username}`,
               iconURL: `${interaction.user.displayAvatarURL({
                 dynamic: true,
               })}`,
@@ -107,29 +108,39 @@ export default {
     const currentMoney = dobak_find.money;
 
     const embed = new EmbedBuilder()
-      .setColor("Green")
-      .setTitle("📅 나츠미의 출석체크!")
+      .setColor("#FF7F50")
+      .setTitle("🏮 나츠미의 출석 장부")
       .setDescription(
         `**${
           (dailycheck_find?.count || 0) + 1
-        }일 째 출석체크를 완료했다냥!**\n\n💵 **지급 금액:** \`${moneygiveamount.toLocaleString()}\`원\n✨ **경험치:** \`50 XP\``
+        }일 째 출석 완료!**\n\n콘콘! 자 여기 용돈이야. 허튼 데 쓰지 말고 잘 간직하라구? \n**아, 별로 널 위해서 주는 건 아니니까!**`
       )
       .addFields({
-        name: "현재 잔액",
-        value: `\`${currentMoney.toLocaleString()}\`원`,
+        name: "💰 챙겨준 냥",
+        value: `\`${moneygiveamount.toLocaleString()}\` 냥`,
         inline: true
       })
       .addFields({
-        name: "총 출석 일수",
-        value: `\`${(dailycheck_find?.count || 0) + 1}\`일`,
+        name: "✨ 쌓인 영력",
+        value: `\`50 XP\``,
         inline: true
       })
-      .setAuthor({
-        name: `${interaction.user.tag}`,
-        iconURL: `${interaction.user.displayAvatarURL({
-          dynamic: true,
-        })}`,
+      .addFields({
+        name: "\u200B",
+        value: "\u200B",
+        inline: false
       })
+      .addFields({
+        name: "📦 내 지갑",
+        value: `\`${currentMoney.toLocaleString()}\` 냥`,
+        inline: true
+      })
+      .addFields({
+        name: "📅 성실함 점수",
+        value: `\`${(dailycheck_find?.count || 0) + 1}\` 일`,
+        inline: true
+      })
+      .setFooter({ text: "내일도 얼굴 안 비치면 꼬리로 확... 알지?" })
       .setTimestamp();
     interaction.editReply({ embeds: [embed] });
   },

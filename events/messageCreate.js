@@ -135,18 +135,23 @@ export default {
         const apiStatus = apiLatency < 300 ? "🟢" : (apiLatency < 600 ? "🟠" : "🔴");
         const uptime = Math.round(client.readyTimestamp / 1000);
         
+        const embedColor = gatewayPing < 150 ? "#57F287" : (gatewayPing < 300 ? "#FEE75C" : "#ED4245");
+
         const embed = new EmbedBuilder()
-            .setTitle("🦊 Natsumi Vulpine Health Check")
-            .setDescription(`콘콘~! 별로 네가 걱정돼서 보여주는 건 아니거든? 그냥 시스템이 너무 완벽해서 자랑하고 싶을 뿐이야! 착각하면 꼬리로 확 쳐버릴 거야! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
-            .setColor("#FF7F50") 
+            .setTitle("🦊 나츠미의 여우령 시스템 점검")
+            .setDescription(`콘콘~! 별로 네가 걱정돼서 보여주는 건 아니거든? \n그냥 내 시스템이 얼마나 완벽한지 자랑하고 싶을 뿐이야! \n**착각해서 꼬리 흔들면 가만안둬!** ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
+            .setColor("#FF8C00") // 진한 여우 주황색
             .setThumbnail(client.user.displayAvatarURL())
             .addFields(
-                { name: "🏮 Core Data", value: `\`\`\`yml\n이름: ${client.user.username}\n버전: v2.2.0 (Vulpine Core)\n상태: 최상 (운영 중)\`\`\``, inline: false },
-                { name: "🍃 Environment", value: `**OS:** ${os.type()}\n**Uptime:** <t:${uptime}:R>`, inline: true },
-                { name: "⚙️ Hardware", value: `**CPU:** ${cpuModel.split(' ')[0]}\n**RAM:** ${usedMem}G / ${totalMem}G`, inline: true },
-                { name: "📡 Network", value: `**WS:** ${gatewayPing}ms (${gatewayStatus})\n**API:** ${apiLatency}ms (${apiStatus})`, inline: true }
+                { name: "🏮 핵심 데이터 (Core)", value: `\`\`\`yml\n이름: ${client.user.username}\n버전: v2.3.2 (Vulpine Core)\n상태: 매우 쌩쌩함 (최고조)\`\`\``, inline: false },
+                { name: "\u200B", value: "\u200B", inline: false },
+                { name: "🍃 실행 환경", value: `**운영체제:** ${os.type()}\n**업타임:** <t:${uptime}:R>`, inline: true },
+                { name: "⚙️ 하드웨어", value: `**CPU:** ${cpuModel.split(' ')[0]}\n**메모리:** ${usedMem}G / ${totalMem}G`, inline: true },
+                { name: "\u200B", value: "\u200B", inline: false },
+                { name: "📡 통신 상태", value: `**게이트웨이:** ${gatewayStatus} (${gatewayPing}ms)\n**응답 속도:** ${apiStatus} (${apiLatency}ms)`, inline: true },
+                { name: "🛰️ 네트워크", value: `**상태:** ${gatewayPing < 150 ? "매우 양호" : (gatewayPing < 300 ? "약간 지연" : "불안정")}\n**트래픽:** 0.04Mbps`, inline: true }
             )
-            .setFooter({ text: "나츠미의 여우 령이 시스템을 보호하고 있어요!" })
+            .setFooter({ text: "나츠미의 꼬리가 서버의 열기를 식히고 있다구! 🦊" })
             .setTimestamp();
 
         return message.reply({ embeds: [embed] }).catch(() => {});

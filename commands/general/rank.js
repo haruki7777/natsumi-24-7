@@ -10,9 +10,9 @@ import { ensureKoreanFont } from "../../utils/fonts.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("랭크")
-    .setDescription("자신의 현재 레벨, 경험치, 소지금, 출석체크 정보를 확인한다냥!")
+    .setDescription("여우의 눈으로 너의 위업과 지갑을 감시한다냥!")
     .addUserOption((option) =>
-      option.setName("유저").setDescription("정보를 확인할 유저를 선택해라냥")
+      option.setName("유저").setDescription("정보를 엿볼 대상을 골라봐!")
     ),
   /**
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
@@ -23,7 +23,7 @@ export default {
     const guildId = interaction.guildId;
 
     if (!guildId) {
-      return interaction.editReply("개인 메시지에서는 사용할 수 없다냥!");
+      return interaction.editReply("이봐! 개인 메시지에서 내 눈을 피하려고? 소용없어! (서버에서만 가능해)");
     }
 
     // Fetch all data in parallel
@@ -35,7 +35,7 @@ export default {
     ]);
 
     if (!setupData || !setupData.LevelSystem?.Enabled) {
-      return interaction.editReply("미안하지만 이 서버는 레벨 시스템이 활성화되어 있지 않다냥! 🙁\n`/레벨설정 상태: 온`을 관리자에게 요청해라냥!");
+      return interaction.editReply("흥! 이 서버는 아직 내 랭크 시스템을 받아들일 준비가 안 됐나 보네. \n관리자보고 `/레벨설정 상태: 온`이라고 시켜봐! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ");
     }
 
     const level = levelData?.level || 1;
@@ -107,9 +107,9 @@ export default {
         ctx.fillText(target.username, 200, 80);
 
         // Draw Level
-        ctx.fillStyle = "#FFB6C1"; // Pink
+        ctx.fillStyle = "#FF7F50"; // Coral (Fox Theme)
         ctx.font = "bold 24px NanumGothic";
-        ctx.fillText(`Lv. ${level}`, 200, 120);
+        ctx.fillText(`狐 위계: ${level}`, 200, 120);
 
         // Draw XP Progress Bar
         const progress = Math.min(1, xp / needed);
@@ -123,27 +123,30 @@ export default {
         ctx.fillRect(barX, barY, barWidth, barHeight);
 
         // Bar fill
-        ctx.fillStyle = "#FF69B4"; // Hot Pink
+        ctx.fillStyle = "#FF8C00"; // Dark Orange
         ctx.fillRect(barX, barY, barWidth * progress, barHeight);
 
         // Bar text
         ctx.fillStyle = "#FFFFFF";
         ctx.font = "18px NanumGothic";
         ctx.textAlign = "center";
-        ctx.fillText(`${xp.toLocaleString()} / ${needed.toLocaleString()} XP (${Math.floor(progress * 100)}%)`, barX + barWidth / 2, barY + 22);
+        ctx.fillText(`${xp.toLocaleString()} / ${needed.toLocaleString()} 영력 (${Math.floor(progress * 100)}%)`, barX + barWidth / 2, barY + 22);
         ctx.textAlign = "left";
 
         // Draw Money and Attendance
         ctx.fillStyle = "#FFD700"; // Gold
         ctx.font = "bold 22px NanumGothic";
-        ctx.fillText(`💰 소지금: ${money.toLocaleString()}원`, 200, 210);
+        ctx.fillText(`💰 주머니: ${money.toLocaleString()}냥`, 200, 210);
 
         ctx.fillStyle = "#00FF7F"; // Spring Green
         ctx.font = "bold 22px NanumGothic";
-        ctx.fillText(`📅 출석 일수: ${count}일`, 200, 250);
+        ctx.fillText(`📅 성실도: ${count}회 방문`, 200, 250);
 
         const attachment = new AttachmentBuilder(await canvas.encode("png"), { name: `rank-${target.id}.png` });
-        await interaction.editReply({ files: [attachment] });
+        await interaction.editReply({ 
+            content: `콘콘! ${target.username}의 정보를 가져왔어. 별로 네가 알고 싶어서 찾아본 건 아니니까! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`,
+            files: [attachment] 
+        });
 
     } catch (error) {
         console.error("Canvas Error:", error);

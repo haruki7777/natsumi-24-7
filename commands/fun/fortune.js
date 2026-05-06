@@ -5,17 +5,7 @@ import { getTranslation, getLang } from '../../utils/i18n.js';
 export default {
   data: new SlashCommandBuilder()
     .setName('운세')
-    .setDescription('오늘의 운세를 타로카드로 점쳐준다냥!')
-    .setNameLocalizations({
-      "en-US": "fortune",
-      "en-GB": "fortune",
-      "ja": "占い"
-    })
-    .setDescriptionLocalizations({
-      "en-US": "Reading your fortune with tarot cards!",
-      "en-GB": "Reading your fortune with tarot cards!",
-      "ja": "タロットカードで今日の運勢を占います！"
-    }),
+    .setDescription('나츠미가 타로카드로 네 운명을 엿봐줄게! (별로 널 위해서 점쳐주는 건 아냐!)'),
   
   async execute(interaction) {
     const locale = interaction.locale;
@@ -70,19 +60,19 @@ export default {
     const luckyHit = currentLucky.hits[Math.floor(Math.random() * currentLucky.hits.length)];
     
     const initialEmbed = new EmbedBuilder()
-      .setTitle(getTranslation(locale, 'fortune.initialTitle'))
-      .setDescription(getTranslation(locale, 'fortune.initialDesc'))
-      .setColor('#FFB6C1')
+      .setTitle("🔮 나츠미의 신비로운 점성술")
+      .setDescription("흥! 네 미래가 그렇게 궁금해? \n여우의 영력이 깃든 카드를 한 장 뽑아봐. \n**딱히 널 걱정해서 보고 싶어 하는 건 아니니까!**")
+      .setColor('#FF7F50')
       .setThumbnail('https://cdn-icons-png.flaticon.com/512/1048/1048953.png')
-      .setFooter({ text: getTranslation(locale, 'fortune.footer') });
+      .setFooter({ text: "여우는 거짓말을 하지 않는다구!" });
 
     const row = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
           .setCustomId('reveal_tarot')
-          .setLabel(getTranslation(locale, 'fortune.buttonLabel'))
-          .setEmoji('🔮')
-          .setStyle(ButtonStyle.Success)
+          .setLabel("운명 확인하기! 콘콘!")
+          .setEmoji('🦊')
+          .setStyle(ButtonStyle.Danger)
       );
 
     const response = await interaction.reply({
@@ -103,11 +93,11 @@ export default {
 
       if (i.customId === 'reveal_tarot') {
         const loadingEmbed = new EmbedBuilder()
-          .setTitle(getTranslation(locale, 'common.loading'))
-          .setDescription('나츠미가 수정구를 들여다보며 당신의 별자리를 읽고 있다냥... 🔮')
-          .setColor('#FFD700')
+          .setTitle("🏮 점술 진행 중...")
+          .setDescription('나츠미가 수정구를 들여다보며 네 운명을 읽고 있어! \n**기다리는 동안 딴짓하지 마! 알겠어?** 🔮')
+          .setColor('#FF7F50')
           .setThumbnail('https://i.ibb.co/vYV0Y4p/loading-oracle.gif')
-          .setFooter({ text: getTranslation(locale, 'fortune.footer') });
+          .setFooter({ text: "운명의 흐름을 거스르지 마..." });
 
         await i.update({
           embeds: [loadingEmbed],
@@ -118,23 +108,24 @@ export default {
         let aiFlow = "";
 
         try {
-          const sysPrompt = `You are Natsumi, an elite mystical anime girl tarot oracle.
-          Card Drawn: ${cardName}.
+          const sysPrompt = `You are Natsumi (나츠미), a 17-year-old Tsundere Vulpine (Fox girl) high schooler who is also a mystical oracle. 
+          Your personality: Blunt, slightly dismissive, but secretly caring. You use phrases like "흥!" (Heph!), "바보야" (Dummy), and fox sounds like "콘콘!" (Kon kon!).
           Target Language: ${lang === 'ko' ? 'Korean' : lang === 'ja' ? 'Japanese' : 'English'}.
-
-          TASK: Provide a concise, point-focused, and high-quality tarot reading. Focus on the single most important message.
+          
+          Card Drawn: ${cardName}.
+          
+          TASK: Provide a tarot reading in your persona. 
+          Respond in Banmal (informal Korean) if in Korean.
           
           FORMAT:
           [READING]
-          (3-5 concise, impactful sentences focusing on key points. End each naturally with 냥/にゃ/nya~.)
+          (3-5 concise, impactful sentences in your tsundere fox-girl voice.)
           
           [FLOW]
-          (2-3 punchy sentences about the spiritual energy flow.)
-          
-          Maintain persona. No long paragraphs. Just the raw essence of fate.`;
+          (2-3 punchy sentences about energy flow.)`;
 
           const aiResult = await generateDistributedContent({
-            contents: [{ role: "user", parts: [{ text: `Concise oracle reading for ${cardName}.` }] }],
+            contents: [{ role: "user", parts: [{ text: `Read me the fate for ${cardName}.` }] }],
             config: { 
               systemInstruction: sysPrompt, 
               temperature: 0.8, 
@@ -169,16 +160,16 @@ export default {
         }
 
         const resultEmbed = new EmbedBuilder()
-          .setTitle(getTranslation(locale, 'fortune.resultTitle').replace('{card}', cardName))
-          .setDescription(`### 🕯️ ${getTranslation(locale, 'fortune.adviceLabel')}\n${aiReading}`)
+          .setTitle(`🦊 [${cardName}] 너의 운명이라구!`)
+          .setDescription(`### 🕯️ 나츠미의 조언\n${aiReading}`)
           .addFields(
-            { name: `🌊 ${getTranslation(locale, 'fortune.flowLabel')}`, value: aiFlow.substring(0, 1024) },
-            { name: getTranslation(locale, 'fortune.luckyLabel'), value: `🔢 **${getTranslation(locale, 'fortune.luckyNumber')}**: \`${luckyNum}\`\n🎨 **${getTranslation(locale, 'fortune.luckyColor')}**: \`${luckyCol}\`\n🎯 **${getTranslation(locale, 'fortune.luckyHit')}**: \`${luckyHit}\``, inline: false }
+            { name: `🌊 운명의 흐름`, value: aiFlow.substring(0, 1024) },
+            { name: "🏮 나츠미가 뽑은 행운", value: `🔢 **행운의 숫자**: \`${luckyNum}\`\n🎨 **행운의 색깔**: \`${luckyCol}\`\n🎯 **행운의 사건**: \`${luckyHit}\``, inline: false }
           )
-          .setColor(pick.color)
-          .setAuthor({ name: `${interaction.user.username}'s Destiny`, iconURL: interaction.user.displayAvatarURL() })
+          .setColor(pick.color || '#FF7F50')
+          .setAuthor({ name: `${interaction.user.username}의 운명`, iconURL: interaction.user.displayAvatarURL() })
           .setTimestamp()
-          .setFooter({ text: getTranslation(locale, 'fortune.footer') });
+          .setFooter({ text: "좋은 결과가 나왔다고 너무 좋아하지 마! 바보!" });
 
         await i.editReply({
           embeds: [resultEmbed]
@@ -191,7 +182,7 @@ export default {
     collector.on('end', async (collected, reason) => {
       if (reason === 'time' && collected.size === 0) {
         await interaction.editReply({
-          content: getTranslation(locale, 'fortune.timeout'),
+          content: "기다리다 지쳤어! 바보! 다음에 다시 오든가!",
           components: []
         }).catch(() => {});
       }
