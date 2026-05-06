@@ -42,9 +42,11 @@ async function startServer() {
   let lastError = "";
   let messageCount = 0;
   const logs: string[] = [];
+  let isCooling = false;
+  let lastCoolingAt = 0;
 
   const discordToken = process.env.TOKEN?.replace(/['"]/g, "").trim();
-  const geminiKey = process.env.MY_GEMINI_API_KEY;
+  const geminiKey = process.env.MY_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   const clientId = process.env.ID?.replace(/['"]/g, "").trim();
   const mongoUri = process.env.MONGOOSE?.replace(/['"]/g, "").trim();
 
@@ -54,6 +56,11 @@ async function startServer() {
     logs.push(entry);
     if (logs.length > 100) logs.shift(); 
     console.log(entry);
+  };
+
+  const isPlaceholder = (val?: string) => {
+    if (!val) return false;
+    return val.includes("토큰") || val.includes("클라이언트 ID") || val.includes("URI") || val.includes("MY_APP_URL");
   };
 
   // --- Discord Bot Initialization ---
@@ -326,9 +333,13 @@ async function startServer() {
   };
 
   if (geminiKey) {
-      addLog(`MY_GEMINI_API_KEY found`);
+      if (isPlaceholder(process.env.MY_GEMINI_API_KEY)) {
+        addLog("WARNING: MY_GEMINI_API_KEY seems to be a placeholder!");
+      } else {
+        addLog("AI Engine Key Loaded.");
+      }
   } else {
-      addLog("WARNING: MY_GEMINI_API_KEY is missing!");
+      addLog("WARNING: GEMINI_API_KEY is missing! AI features may not work.");
   }
 
   // --- Process Error Handling (To prevent crashing) ---
@@ -385,7 +396,13 @@ async function startServer() {
   }
 
   if (discordToken) {
-    performLogin(discordToken);
+    if (isPlaceholder(process.env.TOKEN)) {
+      botStatus = "Login Failed";
+      lastError = "Environment variable 'TOKEN' is still set to its placeholder value. Please update it in the Secrets panel.";
+      addLog(`[Error] ${lastError}`);
+    } else {
+      performLogin(discordToken);
+    }
   } else {
     botStatus = "No Token";
     addLog("Missing TOKEN environment variable.");
@@ -396,9 +413,6 @@ async function startServer() {
     console.log(`[Ping] Received ping from ${req.headers['x-forwarded-for'] || req.ip}`);
     res.status(200).send("Pong! I am awake.");
   });
-
-  let isCooling = false;
-  let lastCoolingAt = 0;
 
   app.get("/api/status", (req, res) => {
     const health = getRuntimeHealth(client);
