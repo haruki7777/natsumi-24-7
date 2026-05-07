@@ -175,14 +175,14 @@ jobs:
           vortexa_get() {
             local url="$1"
             local out=""
-            for attempt in 1 2 3 4 5; do
-              out="$(curl -fsS --max-time 75 "${auth[@]}" "${url}" 2>/tmp/vortexa-curl-error.log || true)"
+            for attempt in 1 2 3; do
+              out="$(curl -fsS --max-time 30 "${auth[@]}" "${url}" 2>/tmp/vortexa-curl-error.log || true)"
               if [ -n "${out}" ]; then
                 printf '%s' "${out}"
                 return 0
               fi
               echo "Vortexa GET retry ${attempt} failed: $(cat /tmp/vortexa-curl-error.log)"
-              sleep 30
+              sleep 10
             done
             return 1
           }
@@ -192,8 +192,8 @@ jobs:
             local body status
             body="$(mktemp)"
             printf '{"signal":"%s"}' "${signal}" > "${body}"
-            for attempt in 1 2 3 4 5; do
-              status="$(curl -sS --max-time 75 -o /tmp/vortexa-power-response.json -w "%{http_code}" \
+            for attempt in 1 2 3; do
+              status="$(curl -sS --max-time 30 -o /tmp/vortexa-power-response.json -w "%{http_code}" \
                 -X POST "${auth[@]}" -H "Content-Type: application/json" \
                 --data-binary @"${body}" "${api}/power" || true)"
               echo "Vortexa power signal=${signal} attempt=${attempt} status=${status}"
@@ -205,7 +205,7 @@ jobs:
               elif [ "${status}" -ge 400 ] 2>/dev/null; then
                 cat /tmp/vortexa-power-response.json || true
               fi
-              sleep 30
+              sleep 10
             done
             return 1
           }
