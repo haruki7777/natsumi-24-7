@@ -159,6 +159,7 @@ jobs:
           VORTEXA_API_KEY: ${{ secrets.VORTEXA_API_KEY }}
           VORTEXA_SERVER_ID: ${{ secrets.VORTEXA_SERVER_ID }}
           LITE_SHA: ${{ steps.lite.outputs.lite_sha }}
+          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
@@ -180,7 +181,9 @@ jobs:
           should_power=0
           signal=""
 
-          if [ "${state}" = "offline" ]; then
+          if [ "${EVENT_NAME}" = "schedule" ]; then
+            echo "Scheduled check will not start or restart Vortexa."
+          elif [ "${state}" = "offline" ]; then
             should_power=1
             signal="start"
           elif [ "${last_lite_sha}" != "${LITE_SHA}" ]; then
@@ -201,6 +204,11 @@ jobs:
               cat /tmp/vortexa-power-response.json
             fi
             sleep 100
+          fi
+
+          if [ "${state}" = "offline" ] && [ "${EVENT_NAME}" = "schedule" ]; then
+            echo "Vortexa is offline during a scheduled check; leaving it off by design."
+            exit 0
           fi
 
           log="$(curl -fsS --max-time 75 "${auth[@]}" "${api}/files/contents?file=/startup.log" || true)"
