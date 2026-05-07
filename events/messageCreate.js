@@ -66,11 +66,18 @@ export default {
     const isMentioned = message.mentions.has(client.user.id);
     const isCalled = isMentioned || (content.length > 0 && CALLWORDS.some(word => lowerContent.includes(word.toLowerCase())));
 
-    // 4. Level System Logic (Move to top so all messages get XP)
+    // 0. Deduplication (Local first - High Speed)
+    if (localProcessedCache.has(message.id)) return;
+    localProcessedCache.add(message.id);
+    if (localProcessedCache.size > MAX_CACHE_SIZE) {
+        const first = localProcessedCache.values().next().value;
+        localProcessedCache.delete(first);
+    }
+    
+    // Level System Logic (Moved after local deduplication to avoid double XP)
     if (message.guild) {
         featuresDB.findOne({ GuildID: message.guild.id }).lean().then(levelSystemCheck => {
             if (levelSystemCheck && levelSystemCheck.LevelSystem?.Enabled) {
-                // Pass null to use the dynamic level-based XP formula in levels.js
                 addXP(message.guild.id, message.author.id, null, message).catch(() => {});
             }
         }).catch(() => {});
@@ -86,14 +93,6 @@ export default {
         }).catch(() => {});
     }
 
-    // 0. Deduplication (Local first - High Speed)
-    if (localProcessedCache.has(message.id)) return;
-    localProcessedCache.add(message.id);
-    if (localProcessedCache.size > MAX_CACHE_SIZE) {
-        const first = localProcessedCache.values().next().value;
-        localProcessedCache.delete(first);
-    }
-    
     try {
         // Fast path for DB deduplication
         const existingDoc = await ProcessedMessage.findOneAndUpdate(

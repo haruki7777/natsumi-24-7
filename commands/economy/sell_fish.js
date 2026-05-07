@@ -69,9 +69,9 @@ export default {
             .setDescription(`콘콘! 가져온 물건들이 꽤 싱싱하네? 내가 다 사줄 테니까 고맙게 생각하라구!`)
             .addFields(
                 { name: "🏮 가져온 것들", value: `총 \`${totalCount}\` 개`, inline: true },
-                { name: "💰 물건 값", value: `\`${subtotal.toLocaleString()}\` 냥`, inline: true },
-                { name: "✨ 덤 (보너스)", value: `\`${bonusPercent}%\` (+\`${bonusAmount.toLocaleString()}\` 냥)`, inline: true },
-                { name: "💳 최종 주머니", value: `**\`${finalPrice.toLocaleString()}\` 냥**`, inline: false }
+                { name: "💰 물건 값", value: `\`${subtotal.toLocaleString()}\` 금전`, inline: true },
+                { name: "✨ 덤 (보너스)", value: `\`${bonusPercent}%\` (+\`${bonusAmount.toLocaleString()}\` 금전)`, inline: true },
+                { name: "💳 최종 주머니", value: `**\`${finalPrice.toLocaleString()}\` 금전**`, inline: false }
             )
             .setColor("#FF7F50")
             .setThumbnail("https://cdn-icons-png.flaticon.com/512/2311/2311915.png")

@@ -1,72 +1,43 @@
-import { SlashCommandBuilder, ChannelType, PermissionFlagsBits } from "discord.js";
-import Schema from "../../models/privateVoice.js";
+import { 
+  SlashCommandBuilder, 
+  ChannelType, 
+  EmbedBuilder, 
+  ActionRowBuilder, 
+  ButtonBuilder, 
+  ButtonStyle,
+  PermissionFlagsBits
+} from "discord.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("개인음성채널")
-    .setDescription("숲의 비밀 대화방 시스템을 설정할 거야! 콘콘!")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
-    .addStringOption((option) =>
-      option
-        .setName("옵션")
-        .setDescription("추가할지 삭제할지 골라봐.")
-        .setRequired(true)
-        .addChoices(
-          { name: "추가", value: "추가" },
-          { name: "삭제", value: "삭제" }
-        )
-    )
-    .addStringOption((option) =>
-      option
-        .setName("이름")
-        .setDescription("대화방 이름! {user}는 닉네임으로 바뀔 거야.")
-        .setRequired(true)
-        .setMaxLength(30)
-    )
-    .addChannelOption((option) =>
-      option
-        .setName("채널")
-        .setDescription("어디로 들어가야 비밀방이 생길까? (음성 채널)")
-        .setRequired(true)
-        .addChannelTypes(ChannelType.GuildVoice)
-    )
-    .addChannelOption((option) =>
-      option
-        .setName("카테고리")
-        .setDescription("개인 채널이 생성될 카테고리")
-        .setRequired(true)
-        .addChannelTypes(ChannelType.GuildCategory)
-    ),
+    .setDescription("개인 음성 채널 생성 시스템을 자동으로 구축합니다.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+
   /**
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    await interaction.deferReply();
-    const namePattern = interaction.options.getString("이름");
-    const option = interaction.options.getString("옵션");
-    const triggerChannel = interaction.options.getChannel("채널");
-    const spawnCategory = interaction.options.getChannel("카테고리");
+    const embed = new EmbedBuilder()
+      .setTitle("🏮 개인 음성 채널 시스템")
+      .setDescription(
+        "아래 버튼을 누르면 시스템이 자동으로 구축됩니다.\n\n" +
+        "1. 전용 카테고리가 생성됩니다.\n" +
+        "2. `➕ 대화방 생성` 채널이 만들어집니다.\n" +
+        "3. **관리자님이 이 채널의 인원 제한을 수정하면**, 생성되는 방들도 그 인원수를 따라가요!\n" +
+        "4. 채널에 입장하면 개인 방이 생기고, 모두 나가면 자동으로 사라집니다."
+      )
+      .setColor("#FF8C00")
+      .setFooter({ text: "나츠미의 마법으로 순식간에 만들어줄게! 콘콘!" });
 
-    if (option === "추가") {
-      await Schema.findOneAndUpdate(
-        { guildId: interaction.guildId, channelId: triggerChannel.id },
-        { categoryId: spawnCategory.id, name: namePattern },
-        { upsert: true }
-      );
-      return interaction.editReply({ content: `**✅ ${triggerChannel}에 비밀 대화방 시스템을 설치했어! 콘콘!**` });
-    }
-    
-    if (option === "삭제") {
-      const deleted = await Schema.findOneAndDelete({
-        guildId: interaction.guildId,
-        channelId: triggerChannel.id,
-      });
-      
-      if (deleted) {
-        return interaction.editReply({ content: `**✅ ${triggerChannel}의 비밀 대화방 시스템을 철거했어! 흥!**` });
-      } else {
-        return interaction.editReply({ content: `**❌ 거긴 애초에 설정도 안 되어 있었잖아! 바보야?**` });
-      }
-    }
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("privateVoiceSetup")
+        .setLabel("자동 시스템 구축하기")
+        .setStyle(ButtonStyle.Success)
+        .setEmoji("🏮")
+    );
+
+    await interaction.reply({ embeds: [embed], components: [row] });
   },
 };

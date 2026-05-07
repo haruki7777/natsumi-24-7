@@ -8,5 +8,6 @@ export default model(
     categoryId: String,
     channelId: String,
     name: String,
+    userLimit: Number,
   })
 );

@@ -178,9 +178,9 @@ const createClient = () => {
       ThreadManager: 3,
       PresenceManager: 0,
       ReactionManager: 0,
-      GuildMemberManager: 25,
-      UserManager: 35,
-      VoiceStateManager: 8,
+      GuildMemberManager: 100,
+      UserManager: 100,
+      VoiceStateManager: 100,
       BaseGuildEmojiManager: 0,
       GuildBanManager: 0,
       GuildInviteManager: 0,
@@ -282,7 +282,6 @@ const start = async () => {
     if (!client?.isReady()) return;
     client.guilds.cache.forEach((guild: any) => {
       guild.messages?.cache?.clear?.();
-      guild.voiceStates?.cache?.clear?.();
     });
     resetRuntimeLag();
     import("./utils/cache.js").then((m) => m.clearCache()).catch(() => {});

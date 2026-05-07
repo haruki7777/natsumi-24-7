@@ -1,7 +1,7 @@
 // Commands/* 폴더에 넣어주세요
 
 const moneycooltime = "60"; //돈받기 명령어 쿨타임을 정해주세요 | 1초 = 1
-const moneygiveamount = 5000; //돈받기 명령어를 사용하면 받을 돈을 입력해 주세요 (""안에 넣지 마시고 그냥 숫자로 적어주세요)
+const moneygiveamount = 5000; // 돈받기 명령어를 사용하면 받을 금액을 입력하세요.
 
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import dobak_Schema from "../../models/dobak.js";
@@ -9,7 +9,7 @@ import dobak_Schema from "../../models/dobak.js";
 export default {
   data: new SlashCommandBuilder()
     .setName("돈받기")
-    .setDescription(`도박... 아니, 활동 자금 ${moneygiveamount.toLocaleString()} 냥을 줄게! 콘콘!`),
+    .setDescription(`도박... 아니, 활동 자금 ${moneygiveamount.toLocaleString()} 금전을 줄게! 콘콘!`),
   /**
    *
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
@@ -70,14 +70,14 @@ export default {
       .setDescription(
         `**${interaction.user.username}! 특별히 \`${moneygiveamount.toLocaleString(
           "ko-KR"
-        )}\` 냥을 빌려주는 거야. \n딱히 널 걱정해서 주는 건 아니니까 착각하지 마! 콘콘!**`
+        )}\` 금전을 빌려주는 거야. \n딱히 널 걱정해서 주는 건 아니니까 착각하지 마! 콘콘!**`
       )
       .addFields(
         {
           name: "💰 현재 주머니",
           value: `\`${(
             (dobak_find?.money || 0) + Number(moneygiveamount)
-          ).toLocaleString("ko-KR")}\` 냥`,
+          ).toLocaleString("ko-KR")}\` 금전`,
           inline: true
         },
         { name: "🏆 숲의 위계", value: `${ranking} 위`, inline: true }

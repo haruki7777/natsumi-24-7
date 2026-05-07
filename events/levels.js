@@ -52,21 +52,14 @@ export const addXP = async(guildId, userId, xpToAdd, target) => {
             .setColor(`#FF8C00`)
             .setTimestamp(Date.now());
 
-        const isInteraction = target.isReplyable && (target.applicationId || target.token);
-
-        if (isInteraction) {
-            // Use Ephemeral follow-up for interactions (Slash Commands, Buttons, etc.)
-            if (target.deferred || target.replied) {
-                target.followUp({ embeds: [LevelEmbed], ephemeral: true }).catch(() => {});
-            } else {
-                target.reply({ embeds: [LevelEmbed], ephemeral: true }).catch(() => {});
-            }
-        } else {
-            // For regular text messages: Send to channel and auto-delete after 5s
-            target.channel.send({ content: `<@${author.id}>`, embeds: [LevelEmbed] }).then(msg => {
-                setTimeout(() => msg.delete().catch(() => {}), 5000);
-            }).catch(() => {});
-        }
+        // Always send as a temporary public message that deletes itself
+        // This makes it visible to others but keeps the chat clean after a few seconds.
+        target.channel.send({ 
+            content: `**콘콘! <@${author.id}>, 서열이 올랐어!**`,
+            embeds: [LevelEmbed] 
+        }).then(msg => {
+            setTimeout(() => msg.delete().catch(() => {}), 6000);
+        }).catch(() => {});
     }
 }
 
