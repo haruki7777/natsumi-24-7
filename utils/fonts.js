@@ -8,7 +8,11 @@ const FONT_NAME = 'NanumGothic-Bold.ttf';
 const FONT_PATH = path.join(FONT_DIR, FONT_NAME);
 const FONT_URL = 'https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf';
 
+let isFontRegistered = false;
+
 export async function ensureKoreanFont() {
+    if (isFontRegistered) return true;
+
     if (!fs.existsSync(FONT_DIR)) {
         fs.mkdirSync(FONT_DIR, { recursive: true });
     }
@@ -40,6 +44,7 @@ export async function ensureKoreanFont() {
     const registered = GlobalFonts.registerFromPath(FONT_PATH, 'NanumGothic');
     if (registered) {
         console.log('[Fonts] NanumGothic registered successfully.');
+        isFontRegistered = true;
     } else {
         console.warn('[Fonts] NanumGothic registration failed.');
     }

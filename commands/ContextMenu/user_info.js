@@ -39,10 +39,10 @@ export default {
     const embed = new EmbedBuilder()
       .setAuthor({ 
         name: `${targetUser.username}의 관찰 기록`, 
-        iconURL: targetUser.displayAvatarURL({ dynamic: true }) 
+        iconURL: targetUser.displayAvatarURL({ size: 128 }) 
       })
       .setTitle(`🪐 유저 프로필 카드`)
-      .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 512 }))
+      .setThumbnail(targetUser.displayAvatarURL({ size: 512 }))
       .setColor("#FF7F50")
       .addFields(
         { name: "🆔 식별 부적", value: `\`${targetUser.id}\``, inline: true },

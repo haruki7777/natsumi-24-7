@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, AttachmentBuilder } from "discord.js";
+import { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } from "discord.js";
 import levelDB from "../../models/LevelSystem.js";
 import dobakDB from "../../models/dobak.js";
 import dailycheckDB from "../../models/dailycheck.js";
@@ -6,6 +6,33 @@ import featuresDB from "../../models/Features.js";
 import { calculateXP } from "../../events/levels.js";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { ensureKoreanFont } from "../../utils/fonts.js";
+
+// Memory cache for background images to reduce network load
+const imageCache = new Map();
+const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+
+async function getCachedImage(url) {
+    if (imageCache.has(url)) {
+        const cached = imageCache.get(url);
+        if (Date.now() - cached.timestamp < CACHE_TTL) {
+            return cached.image;
+        }
+    }
+    try {
+        // Load with 3 second timeout
+        const imgPromise = loadImage(url);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Image Load Timeout")), 3000)
+        );
+        const img = await Promise.race([imgPromise, timeoutPromise]);
+        
+        imageCache.set(url, { image: img, timestamp: Date.now() });
+        return img;
+    } catch (e) {
+        console.warn(`[Canvas] Failed to load ${url}: ${e.message}`);
+        return null;
+    }
+}
 
 export default {
   data: new SlashCommandBuilder()
@@ -18,13 +45,14 @@ export default {
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    await interaction.deferReply();
     const target = interaction.options.getUser("유저") || interaction.user;
     const guildId = interaction.guildId;
 
     if (!guildId) {
-      return interaction.editReply("이봐! 개인 메시지에서 내 눈을 피하려고? 소용없어! (서버에서만 가능해)");
+      return interaction.reply({ content: "이봐! 서버에서만 내 눈을 피하려고? 소용없어!", ephemeral: true });
     }
+
+    await interaction.deferReply();
 
     // Fetch all data in parallel
     const [levelData, moneyData, attendanceData, setupData] = await Promise.all([
@@ -44,115 +72,156 @@ export default {
     const count = attendanceData?.count || 0;
     const needed = calculateXP(level);
     
-    // Background Image
-    let backgroundUrl = setupData?.LevelSystem?.Background || "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop";
+    // Background Selection
+    const defaultBG = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop";
+    let backgroundUrl = setupData?.LevelSystem?.Background;
     
-    // Safety check for known broken Discord link
-    if (backgroundUrl.includes("cdn.discordapp.com/attachments/965674056080826368/1003622130921001040/background.png")) {
-        backgroundUrl = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop";
+    // Validate background URL - omit if clearly placeholder or invalid
+    if (!backgroundUrl || backgroundUrl === "default" || backgroundUrl.length < 10) {
+        backgroundUrl = defaultBG;
     }
-
-    // Ensure fonts are ready
+    
+    // Safety check for known broken Discord link template
+    if (backgroundUrl.includes("cdn.discordapp.com/attachments/965674056080826368/1003622130921001040/background.png")) {
+        backgroundUrl = defaultBG;
+    }
+    
+    // Ensure fonts are ready (Async check)
     await ensureKoreanFont();
 
     // Canvas Generation
     const canvas = createCanvas(900, 300);
     const ctx = canvas.getContext("2d");
 
-    // Helper to draw background
-    const drawBackground = async () => {
-        try {
-            const bg = await loadImage(backgroundUrl);
-            ctx.drawImage(bg, 0, 0, 900, 300);
-        } catch (error) {
-            console.warn(`[Canvas] Background load failed (${backgroundUrl}): drawing fallback color`);
-            ctx.fillStyle = "#2c2f33"; // Discord dark grey
+    // Drawing Logic
+    try {
+        // Helper to draw rounded rectangle using standard paths
+        const drawRoundedRect = (ctx, x, y, width, height, radius) => {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        };
+
+        // 1. Draw Background
+        let bgImg = null;
+        if (backgroundUrl !== defaultBG) {
+            bgImg = await getCachedImage(backgroundUrl);
+        }
+        if (!bgImg) {
+            bgImg = await getCachedImage(defaultBG);
+        }
+
+        if (bgImg) {
+            // Center crop/fill background
+            const scale = Math.max(canvas.width / bgImg.width, canvas.height / bgImg.height);
+            const x = (canvas.width - bgImg.width * scale) / 2;
+            const y = (canvas.height - bgImg.height * scale) / 2;
+            ctx.drawImage(bgImg, x, y, bgImg.width * scale, bgImg.height * scale);
+        } else {
+            ctx.fillStyle = "#2c2f33";
             ctx.fillRect(0, 0, 900, 300);
         }
-    };
 
-    // Helper to draw avatar
-    const drawAvatar = async () => {
-        try {
-            const avatarUrl = target.displayAvatarURL({ extension: "png", size: 256 });
-            const avatar = await loadImage(avatarUrl);
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(100, 150, 70, 0, Math.PI * 2, true);
-            ctx.closePath();
-            ctx.clip();
-            ctx.drawImage(avatar, 30, 80, 140, 140);
-            ctx.restore();
-        } catch (error) {
-            console.warn(`[Canvas] Avatar load failed for ${target.tag}: drawing fallback circle`);
-            ctx.fillStyle = "#FFB6C1";
-            ctx.beginPath();
-            ctx.arc(100, 150, 70, 0, Math.PI * 2, true);
+        // 2. Semi-transparent overlay
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        drawRoundedRect(ctx, 20, 20, 860, 260, 15);
+        ctx.fill();
+
+        // 3. Draw Avatar
+        const avatarUrl = target.displayAvatarURL({ extension: "png", size: 256 }) || target.defaultAvatarURL;
+        const avatar = await loadImage(avatarUrl).catch(() => null);
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(110, 150, 70, 0, Math.PI * 2);
+        ctx.clip();
+        if (avatar) {
+            ctx.drawImage(avatar, 40, 80, 140, 140);
+        } else {
+            ctx.fillStyle = "#FF7F50";
             ctx.fill();
         }
-    };
+        ctx.restore();
 
-    try {
-        await drawBackground();
-
-        // Semi-transparent overlay
-        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-        ctx.fillRect(20, 20, 860, 260);
-
-        await drawAvatar();
-
-        // Draw Username
+        // 4. Draw Texts
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "bold 36px NanumGothic";
-        ctx.fillText(target.username, 200, 80);
+        ctx.font = "bold 34px NanumGothic";
+        ctx.fillText(target.username, 210, 85);
 
-        // Draw Level
-        ctx.fillStyle = "#FF7F50"; // Coral (Fox Theme)
-        ctx.font = "bold 24px NanumGothic";
-        ctx.fillText(`📊 위계: ${level}`, 200, 120);
+        ctx.fillStyle = "#FF7F50";
+        ctx.font = "bold 22px NanumGothic";
+        ctx.fillText(`📊 위계: ${level}`, 210, 125);
 
-        // Draw XP Progress Bar
+        // Progress Bar
         const progress = Math.min(1, xp / needed);
-        const barWidth = 600;
-        const barHeight = 30;
-        const barX = 200;
-        const barY = 140;
+        const barWidth = 630;
+        const barHeight = 35;
+        const barX = 210;
+        const barY = 145;
 
-        // Bar background
-        ctx.fillStyle = "#444444";
-        ctx.fillRect(barX, barY, barWidth, barHeight);
+        // Trace
+        ctx.fillStyle = "#333333";
+        drawRoundedRect(ctx, barX, barY, barWidth, barHeight, 5);
+        ctx.fill();
 
-        // Bar fill
-        ctx.fillStyle = "#FF8C00"; // Dark Orange
-        ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+        // Fill
+        if (progress > 0) {
+            ctx.fillStyle = "#FF8C00";
+            drawRoundedRect(ctx, barX, barY, Math.max(10, barWidth * progress), barHeight, 5);
+            ctx.fill();
+        }
 
-        // Bar text
+        // XP Text
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "18px NanumGothic";
+        ctx.font = "16px NanumGothic";
         ctx.textAlign = "center";
-        ctx.fillText(`${xp.toLocaleString()} / ${needed.toLocaleString()} 영력 (${Math.floor(progress * 100)}%)`, barX + barWidth / 2, barY + 22);
+        ctx.fillText(`${xp.toLocaleString()} / ${needed.toLocaleString()} 영력 (${(progress * 100).toFixed(1)}%)`, barX + barWidth/2, barY + 23);
         ctx.textAlign = "left";
 
-        // Draw Money and Attendance
-        ctx.fillStyle = "#FFD700"; // Gold
-        ctx.font = "bold 22px NanumGothic";
-        ctx.fillText(`💰 주머니: ${money.toLocaleString()} 금전`, 200, 210);
+        // 5. Money & Attendance
+        ctx.font = "bold 20px NanumGothic";
+        ctx.fillStyle = "#FFD700";
+        ctx.fillText(`💰 주머니: ${money.toLocaleString()} 금전`, 210, 215);
 
-        ctx.fillStyle = "#00FF7F"; // Spring Green
-        ctx.font = "bold 22px NanumGothic";
-        ctx.fillText(`📅 성실도: ${count}회 출석`, 200, 250);
+        ctx.fillStyle = "#00FF7F";
+        ctx.fillText(`📅 성실도: ${count}회 출석`, 210, 255);
 
         const attachment = new AttachmentBuilder(await canvas.encode("png"), { name: `rank-${target.id}.png` });
         await interaction.editReply({ 
-            content: `콘콘! ${target.username}의 정보를 가져왔어. 별로 네가 알고 싶어서 찾아본 건 아니니까! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`,
+            content: `콘콘! ${target.username}의 서열 기록을 확인했어! 별로 관심 있는 건 아니지만 말이야! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`,
             files: [attachment] 
         });
 
     } catch (error) {
-        console.error("Canvas Error:", error);
-        await interaction.editReply("으익! 랭크 카드를 그리다가 붓이 부러졌어! (오류 발생) 대신 정보만 알려줄게! 흥!");
-        // Fallback to text embed if canvas fails
-        // (Existing logic could go here)
+        console.error("[Rank Optimization Error]", error);
+        
+        const progressRaw = needed > 0 ? xp / needed : 0;
+        const progressPercent = (Math.min(1, progressRaw) * 100).toFixed(1);
+
+        const fallbackEmbed = new EmbedBuilder()
+            .setTitle("🏮 서열 정보 (이미지 로드 실패)")
+            .setDescription(`**${target.username}** 녀석의 기록을 이미지로 그리려다 실패했어! 대신 정보만 알려줄게!\n\n` + 
+                `**위계:** Lv.${level}\n` +
+                `**영력:** ${xp.toLocaleString()} / ${needed.toLocaleString()} (${progressPercent}%)\n` +
+                `**금전:** ${money.toLocaleString()} 금전\n` +
+                `**출석:** ${count}회`)
+            .setThumbnail(target.displayAvatarURL())
+            .setColor("#FF7F50")
+            .setFooter({ text: "흥! 붓이 미끄러진 거니까 착각하지 마!" });
+
+        await interaction.editReply({ 
+            content: "으익! 붓이 미끄러졌어! (이미지 생성 오류) 대신 정보만 알려줄게! 콘콘!",
+            embeds: [fallbackEmbed],
+            files: []
+        });
     }
   },
 };

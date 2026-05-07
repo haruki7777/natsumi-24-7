@@ -70,7 +70,8 @@ export default {
     if (message.guild) {
         featuresDB.findOne({ GuildID: message.guild.id }).lean().then(levelSystemCheck => {
             if (levelSystemCheck && levelSystemCheck.LevelSystem?.Enabled) {
-                addXP(message.guild.id, message.author.id, 2, message).catch(() => {});
+                // Pass null to use the dynamic level-based XP formula in levels.js
+                addXP(message.guild.id, message.author.id, null, message).catch(() => {});
             }
         }).catch(() => {});
     }

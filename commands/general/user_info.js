@@ -46,7 +46,7 @@ export default {
         ? "흥! 뭐? 네 정보가 그렇게 궁금해? 어차피 내가 다 꿰뚫어 보고 있거든! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ" 
         : `콘콘! ${user.user.username} 녀석의 정보를 캐내려는 거야? 너도 참 취향 독특하네! 스토커는 아니겠지?`)
       .setColor("#FF7F50")
-      .setThumbnail(user.user.displayAvatarURL({ dynamic: true }))
+      .setThumbnail(user.user.displayAvatarURL({ size: 512 }))
       .addFields(
         { name: "🏮 정체", value: `**${user.user.username}**\n(${user.user.tag})`, inline: true },
         { name: "🆔 식별 부적", value: `\`${user.id}\``, inline: true },

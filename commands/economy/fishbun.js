@@ -28,7 +28,7 @@ export default {
             return interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`${interaction.user.username}님! 데이터가 존재하지 않다냥!\n\`/출석체크\`로 먼저 돈을 받아라냥!`)
+                        .setDescription(`**${interaction.user.username}, 데이터가 없잖아!** \n\`/출석체크\`로 먼저 용돈을 받아오라고! 바보! 콘콘!`)
                         .setColor("Red")
                 ]
             });
@@ -38,7 +38,7 @@ export default {
             return interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`${interaction.user.username}님! 잔액이 부족하다냥! 현재 잔액: \`${userData.money.toLocaleString()}\`원`)
+                        .setDescription(`**${interaction.user.username}, 빈털터리야?** \n주머니가 텅 비었잖아! 현재 잔액: \`${userData.money.toLocaleString()}\` 금전밖에 없어! ㅋㅋㅋ`)
                         .setColor("Red")
                 ]
             });

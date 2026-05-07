@@ -50,12 +50,9 @@ import {
             await featuresDB.findOneAndUpdate(
               { GuildID: guild.id },
               {
-                LevelSystem: {
-                  Enabled: LevelSystem ? LevelSystem.Enabled : false,
-                  Background: background,
-                },
+                $set: { "LevelSystem.Background": background }
               },
-              { new: true, upsert: true }
+              { upsert: true }
             );
   
             Response.setDescription("🖼️ 새로운 풍경(배경)으로 바꿨어! 콘콘!").setImage(
@@ -63,7 +60,7 @@ import {
             );
           } else {
             Response.setDescription("❌ `배경화면`은 제대로 된 링크여야 한다구! 바보야?");
-            return interaction.reply({
+            return interaction.editReply({
               embeds: [Response],
               ephemeral: true,
             });
@@ -76,14 +73,9 @@ import {
               await featuresDB.findOneAndUpdate(
                 { GuildID: guild.id },
                 {
-                  LevelSystem: {
-                    Enabled: true,
-                    Background: LevelSystem
-                      ? LevelSystem.Background
-                      : "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop",
-                  },
+                  $set: { "LevelSystem.Enabled": true }
                 },
-                { new: true, upsert: true }
+                { upsert: true }
               );
   
               Response.setDescription(
@@ -97,14 +89,9 @@ import {
               await featuresDB.findOneAndUpdate(
                 { GuildID: guild.id },
                 {
-                  LevelSystem: {
-                    Enabled: false,
-                    Background: LevelSystem
-                      ? LevelSystem.Background
-                      : "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop",
-                  },
+                  $set: { "LevelSystem.Enabled": false }
                 },
-                { new: true, upsert: true }
+                { upsert: true }
               );
   
               Response.setDescription(
