@@ -7,6 +7,7 @@ const FishingInventorySchema = new Schema({
   mediumFish: { type: Number, default: 0 },         // 10%
   regularFish: { type: Number, default: 0 },        // 20%
   curiousItem: { type: Number, default: 0 },        // 30%
+  adultItem: { type: Number, default: 0 },          // Added for 낚시 성인용품
   lastFishingTime: { type: Date, default: 0 },
 });
 
