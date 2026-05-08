@@ -21,7 +21,7 @@ export default {
     const result = await checkPremiumHeart(interaction.user.id, { force: true });
     if (result.ok) {
       return interaction.editReply({
-        content: "프리미엄 하트 확인 완료! 이제 `/nsfw`를 사용할 수 있어.",
+        content: "프리미엄 하트 확인 완료! 이제 `/nsfw`, `/sfw`, `/애니짤`을 사용할 수 있어.",
         embeds: [],
         components: [],
       });

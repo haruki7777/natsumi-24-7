@@ -9,6 +9,7 @@ import {
   ActionRowBuilder,
 } from "discord.js";
 import { getTranslation } from "../../utils/i18n.js";
+import { getPremiumHeartConfig } from "../../utils/premiumHeart.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -121,7 +122,7 @@ export default {
 
     embeds["about"] = new EmbedBuilder()
       .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
-      .setTitle(`🦊 나츠미는 누구야?`)
+      .setTitle("🦊 나츠미는 누구야?")
       .setDescription("> 콘콘! 나는 평범한 여고생...이 아니라, 여우 령이 깃든 특별한 존재라구! \n> **제작자: Haruki** \n> 도움이 필요하면 서포트 서버로 오든가! (별로 기다리는 건 아냐!)")
       .setColor("#FF7F50")
       .setImage('https://media.discordapp.net/attachments/1034725786181193785/1054998382558584832/CFB8F7C5-4DA9-46CC-8B6F-348EE6A3906B.png')
@@ -135,10 +136,21 @@ export default {
     const btn2 = new ButtonBuilder()
       .setLabel("서포트 서버")
       .setStyle(ButtonStyle.Link)
-      .setURL("https://discord.gg/DzkPQSaV4F");
+      .setURL("https://discord.gg/Zwd62a3Wg4");
+
+    const heartConfig = getPremiumHeartConfig();
+    const btn3 = new ButtonBuilder()
+      .setLabel("사이트 보기")
+      .setStyle(ButtonStyle.Link)
+      .setURL("https://natsumi-site.kro.kr/");
+
+    const btn4 = new ButtonBuilder()
+      .setLabel("한디리 하트")
+      .setStyle(ButtonStyle.Link)
+      .setURL(heartConfig.pageUrl || "https://koreanbots.dev");
 
     const row = new ActionRowBuilder().addComponents(select);
-    const btnRow = new ActionRowBuilder().addComponents(btn1, btn2);
+    const btnRow = new ActionRowBuilder().addComponents(btn1, btn2, btn3, btn4);
 
     const msg = await interaction.editReply({
       components: [row, btnRow],

@@ -130,12 +130,12 @@ export const buildPremiumHeartPrompt = (userId, checkResult = {}) => {
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setLabel("프리미엄 하트")
+      .setLabel("❤️ 프리미엄 하트 건네기")
       .setStyle(ButtonStyle.Link)
       .setURL(pageUrl),
     new ButtonBuilder()
       .setCustomId(`PremiumHeartCheck_${userId}`)
-      .setLabel("하트 확인")
+      .setLabel("✅ 하트 확인하기")
       .setStyle(ButtonStyle.Success)
   );
 

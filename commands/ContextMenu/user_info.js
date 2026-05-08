@@ -12,24 +12,22 @@ import levelDB from "../../models/LevelSystem.js";
 export default {
   data: new ContextMenuCommandBuilder()
     .setName("너님정보")
-    .setType(ApplicationCommandType.Message),
+    .setType(ApplicationCommandType.User),
   /**
-   * @param {import("discord.js").MessageContextMenuCommandInteraction} interaction
+   * @param {import("discord.js").UserContextMenuCommandInteraction} interaction
    */
   async execute(interaction) {
     await interaction.deferReply();
-    const targetUser = interaction.targetMessage.author;
+    const targetUser = interaction.targetUser;
+    const targetMember = interaction.targetMember;
     const guildId = interaction.guildId;
-    const targetMember = interaction.guild
-      ? await interaction.guild.members.fetch(targetUser.id).catch(() => null)
-      : null;
 
     // Fetch level data
     const levelData = await levelDB.findOne({ GuildID: guildId, UserID: targetUser.id }).lean();
     const level = levelData?.level || 1;
     const xp = levelData?.xp || 0;
 
-    const badges = targetUser.flags?.toArray().join(", ") || "없음";
+    const badges = targetUser.flags.toArray().join(", ") || "없음";
     const botStatus = targetUser.bot ? "🤖 자아가 없는 기계" : "👤 숨 쉬는 인간";
     
     // Roles (excluding @everyone)

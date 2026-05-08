@@ -9,14 +9,14 @@ import {
   export default {
     data: new ContextMenuCommandBuilder()
       .setName("돈 서리하기")
-      .setType(ApplicationCommandType.Message),
+      .setType(ApplicationCommandType.User),
     /**
-     * @param {import("discord.js").MessageContextMenuCommandInteraction} interaction
+     * @param {import("discord.js").UserContextMenuCommandInteraction} interaction
      */
     async execute(interaction) {
       if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true });
   
-      const targetUser = interaction.targetMessage.author;
+      const targetUser = interaction.targetUser;
       const executor = interaction.user;
   
       if (targetUser.id === executor.id) {

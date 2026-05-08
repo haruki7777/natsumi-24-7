@@ -1,6 +1,7 @@
 
 import axios from "axios";
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { buildPremiumHeartPrompt, checkPremiumHeart } from "../../utils/premiumHeart.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -41,6 +42,11 @@ export default {
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
+    const heart = await checkPremiumHeart(interaction.user.id);
+    if (!heart.ok) {
+      return interaction.reply(buildPremiumHeartPrompt(interaction.user.id, heart));
+    }
+
     if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
     const category = interaction.options.getString("카테고리");
  

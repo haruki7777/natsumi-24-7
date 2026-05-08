@@ -7,6 +7,7 @@ export default {
   data: new SlashCommandBuilder()
     .setName("nsfw")
     .setDescription("흥! 인간들의 은밀한 취향을 내가 보여줄게! (후방주의!)")
+    .setNSFW(true) // Ensure Discord marks this properly
     .addStringOption((option) =>
       option
         .setName("카테고리")
@@ -28,7 +29,6 @@ export default {
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    // Secondary check for NSFW channel
     if (!interaction.channel || !interaction.channel.nsfw) {
       return interaction.reply({
         content: "⚠️ **여기는 공공장소야! 이런 건 부끄러운 채널(NSFW)에서나 하라구!**",
