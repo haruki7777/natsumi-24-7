@@ -81,35 +81,37 @@ jobs:
           done <<< "$changed_files"
 
           if [ -f lite-changes/package.json ]; then
-            cat > lite-changes/package.json <<'JSON'
-{
-  "name": "natsumi-bot-24-7",
-  "version": "1.0.0",
-  "description": "Lightweight 24/7 hosting build for Natsumi Discord bot",
-  "type": "module",
-  "main": "bot.ts",
-  "scripts": {
-    "start": "tsx bot.ts",
-    "start:lite": "tsx bot.ts",
-    "check": "tsx --version"
-  },
-  "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "@napi-rs/canvas": "^1.0.0",
-    "axios": "^1.15.2",
-    "discord-html-transcripts": "^3.1.4",
-    "discord.js": "^14.9.0",
-    "dotenv": "^16.0.3",
-    "mongoose": "^7.0.3",
-    "node-fetch": "^2.6.9",
-    "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
-  },
-  "engines": {
-    "node": ">=20"
-  }
-}
-JSON
+            node <<'NODE'
+          const fs = require('fs');
+          const pkg = {
+            name: 'natsumi-bot-24-7',
+            version: '1.0.0',
+            description: 'Lightweight 24/7 hosting build for Natsumi Discord bot',
+            type: 'module',
+            main: 'bot.ts',
+            scripts: {
+              start: 'tsx bot.ts',
+              'start:lite': 'tsx bot.ts',
+              check: 'tsx --version'
+            },
+            dependencies: {
+              '@google/generative-ai': '^0.24.1',
+              '@napi-rs/canvas': '^1.0.0',
+              axios: '^1.15.2',
+              'discord-html-transcripts': '^3.1.4',
+              'discord.js': '^14.9.0',
+              dotenv: '^16.0.3',
+              mongoose: '^7.0.3',
+              'node-fetch': '^2.6.9',
+              tsx: '^4.21.0',
+              typescript: '^6.0.3'
+            },
+            engines: {
+              node: '>=20'
+            }
+          };
+          fs.writeFileSync('lite-changes/package.json', JSON.stringify(pkg, null, 2) + '\n');
+          NODE
           fi
 
           echo "copied=$copied" >> "$GITHUB_OUTPUT"
