@@ -1,0 +1,150 @@
+name: Sync lightweight bot repo
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync-lite:
+    name: Sync changed files to lightweight repo
+    runs-on: ubuntu-latest
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      TARGET_REPO: haruki7777/natsumi-bot-24-7
+      TARGET_BRANCH: main
+      LITE_REPO_TOKEN: ${{ secrets.LITE_REPO_TOKEN }}
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check token
+        run: |
+          if [ -z "$LITE_REPO_TOKEN" ]; then
+            echo "LITE_REPO_TOKEN is not configured."
+            echo "Create a GitHub fine-grained token with write access to haruki7777/natsumi-bot-24-7 and add it as this repository secret."
+            exit 1
+          fi
+
+      - name: Prepare lightweight-safe changed files
+        id: prepare
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+            before="HEAD~1"
+          fi
+
+          changed_files="$(git diff --name-only "$before" "$after" || true)"
+
+          echo "Changed files:"
+          printf '%s\n' "$changed_files"
+
+          rm -rf lite-changes
+          mkdir -p lite-changes
+
+          copied=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+
+            case "$file" in
+              node_modules/*|dist/*|build/*|coverage/*|.git/*|.github/workflows/sync-lite-repo.yml)
+                echo "skip generated/internal: $file"
+                continue
+                ;;
+              package-lock.json|yarn.lock|pnpm-lock.yaml)
+                echo "skip lockfile: $file"
+                continue
+                ;;
+            esac
+
+            if [ -f "$file" ]; then
+              mkdir -p "lite-changes/$(dirname "$file")"
+              cp "$file" "lite-changes/$file"
+              copied=1
+              echo "copy: $file"
+            else
+              echo "skip missing/deleted: $file"
+            fi
+          done <<< "$changed_files"
+
+          # Keep the lightweight repo package small if package.json changed.
+          if [ -f lite-changes/package.json ]; then
+            cat > lite-changes/package.json <<'JSON'
+          {
+            "name": "natsumi-bot-24-7",
+            "version": "1.0.0",
+            "description": "Lightweight 24/7 hosting build for Natsumi Discord bot",
+            "type": "module",
+            "main": "bot.ts",
+            "scripts": {
+              "start": "tsx bot.ts",
+              "start:lite": "tsx bot.ts",
+              "check": "tsx --version"
+            },
+            "dependencies": {
+              "@google/generative-ai": "^0.24.1",
+              "@napi-rs/canvas": "^1.0.0",
+              "axios": "^1.15.2",
+              "discord-html-transcripts": "^3.1.4",
+              "discord.js": "^14.9.0",
+              "dotenv": "^16.0.3",
+              "mongoose": "^7.0.3",
+              "node-fetch": "^2.6.9",
+              "tsx": "^4.21.0",
+              "typescript": "^6.0.3"
+            },
+            "engines": {
+              "node": ">=20"
+            }
+          }
+          JSON
+          fi
+
+          echo "copied=$copied" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout lightweight repository
+        if: steps.prepare.outputs.copied == '1'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_REPO }}
+          ref: ${{ env.TARGET_BRANCH }}
+          token: ${{ env.LITE_REPO_TOKEN }}
+          path: lite-repo
+
+      - name: Apply lightweight changes
+        if: steps.prepare.outputs.copied == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -a lite-changes/ lite-repo/
+
+          cd lite-repo
+          git status --short
+
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No actual lightweight changes to commit."
+            exit 0
+          fi
+
+          git config user.name "natsumi-lite-sync"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "sync: lightweight changes from ${GITHUB_SHA::7}"
+          git push origin "HEAD:${TARGET_BRANCH}"
+
+      - name: Nothing to sync
+        if: steps.prepare.outputs.copied != '1'
+        run: echo "No lightweight-safe changed files to sync."
