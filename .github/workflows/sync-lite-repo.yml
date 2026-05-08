@@ -29,10 +29,10 @@ jobs:
       - name: Check token
         run: |
           if [ -z "$LITE_REPO_TOKEN" ]; then
-            echo "LITE_REPO_TOKEN is not configured."
-            echo "Create a GitHub fine-grained token with write access to haruki7777/natsumi-bot-24-7 and add it as this repository secret."
+            echo "::error::LITE_REPO_TOKEN is not configured. Add it in natsumi-24-7 Settings > Secrets and variables > Actions."
             exit 1
           fi
+          echo "LITE_REPO_TOKEN is configured."
 
       - name: Prepare lightweight-safe changed files
         id: prepare
@@ -80,37 +80,36 @@ jobs:
             fi
           done <<< "$changed_files"
 
-          # Keep the lightweight repo package small if package.json changed.
           if [ -f lite-changes/package.json ]; then
             cat > lite-changes/package.json <<'JSON'
-          {
-            "name": "natsumi-bot-24-7",
-            "version": "1.0.0",
-            "description": "Lightweight 24/7 hosting build for Natsumi Discord bot",
-            "type": "module",
-            "main": "bot.ts",
-            "scripts": {
-              "start": "tsx bot.ts",
-              "start:lite": "tsx bot.ts",
-              "check": "tsx --version"
-            },
-            "dependencies": {
-              "@google/generative-ai": "^0.24.1",
-              "@napi-rs/canvas": "^1.0.0",
-              "axios": "^1.15.2",
-              "discord-html-transcripts": "^3.1.4",
-              "discord.js": "^14.9.0",
-              "dotenv": "^16.0.3",
-              "mongoose": "^7.0.3",
-              "node-fetch": "^2.6.9",
-              "tsx": "^4.21.0",
-              "typescript": "^6.0.3"
-            },
-            "engines": {
-              "node": ">=20"
-            }
-          }
-          JSON
+{
+  "name": "natsumi-bot-24-7",
+  "version": "1.0.0",
+  "description": "Lightweight 24/7 hosting build for Natsumi Discord bot",
+  "type": "module",
+  "main": "bot.ts",
+  "scripts": {
+    "start": "tsx bot.ts",
+    "start:lite": "tsx bot.ts",
+    "check": "tsx --version"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@napi-rs/canvas": "^1.0.0",
+    "axios": "^1.15.2",
+    "discord-html-transcripts": "^3.1.4",
+    "discord.js": "^14.9.0",
+    "dotenv": "^16.0.3",
+    "mongoose": "^7.0.3",
+    "node-fetch": "^2.6.9",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
+JSON
           fi
 
           echo "copied=$copied" >> "$GITHUB_OUTPUT"
@@ -129,7 +128,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rsync -a lite-changes/ lite-repo/
+          cp -a lite-changes/. lite-repo/
 
           cd lite-repo
           git status --short
