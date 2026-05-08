@@ -60,6 +60,10 @@ jobs:
             [ -z "$file" ] && continue
 
             case "$file" in
+              .env|.env.*|*.env)
+                echo "skip env file: $file"
+                continue
+                ;;
               node_modules/*|dist/*|build/*|coverage/*|.git/*|.github/workflows/sync-lite-repo.yml)
                 echo "skip generated/internal: $file"
                 continue
