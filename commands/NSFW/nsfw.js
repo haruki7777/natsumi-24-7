@@ -1,6 +1,7 @@
 
 import axios from "axios";
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { buildPremiumHeartPrompt, checkPremiumHeart } from "../../utils/premiumHeart.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -28,15 +29,20 @@ export default {
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
-
     // Secondary check for NSFW channel
     if (!interaction.channel || !interaction.channel.nsfw) {
-      return interaction.editReply({
+      return interaction.reply({
         content: "⚠️ **여기는 공공장소야! 이런 건 부끄러운 채널(NSFW)에서나 하라구!**",
         ephemeral: true
       });
     }
+
+    const heart = await checkPremiumHeart(interaction.user.id);
+    if (!heart.ok) {
+      return interaction.reply(buildPremiumHeartPrompt(interaction.user.id, heart));
+    }
+
+    if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
 
     const category = interaction.options.getString("카테고리");
     

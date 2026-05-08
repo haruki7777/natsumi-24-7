@@ -26,6 +26,10 @@ TOKEN=""
 ID=""
 MONGOOSE=""
 MY_GEMINI_API_KEY=""
+KOREANBOTS_TOKEN=""
+KOREANBOTS_BOT_ID=""
+KOREANBOTS_BOT_PAGE_URL=""
+PREMIUM_HEART_ENABLED="true"
 ```
 
 Recommended for 512MB plans:
@@ -43,11 +47,12 @@ LATENCY_RECONNECT_COOLDOWN_MS="600000"
 Optional memory savers:
 
 ```env
-DISABLED_COMMAND_CATEGORIES="NSFW"
+DISABLED_COMMAND_CATEGORIES=""
 DISABLED_COMMANDS=""
 ```
 
 Add command names to `DISABLED_COMMANDS` only if the host still hits memory limits.
+Set `DISABLED_COMMAND_CATEGORIES="NSFW"` only if the host cannot handle NSFW image commands at all.
 
 ## GitHub update flow
 
