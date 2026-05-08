@@ -7,7 +7,6 @@ export default {
   data: new SlashCommandBuilder()
     .setName("nsfw")
     .setDescription("흥! 인간들의 은밀한 취향을 내가 보여줄게! (후방주의!)")
-    .setNSFW(true) // Ensure Discord marks this properly
     .addStringOption((option) =>
       option
         .setName("카테고리")
