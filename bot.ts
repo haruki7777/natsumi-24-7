@@ -33,6 +33,12 @@ const LATENCY_WATCHDOG_ENABLED = process.env.LATENCY_WATCHDOG_ENABLED !== "false
 const LATENCY_RECONNECT_PING_MS = Number(process.env.LATENCY_RECONNECT_PING_MS || 3000);
 const LATENCY_RECONNECT_CONSECUTIVE = Number(process.env.LATENCY_RECONNECT_CONSECUTIVE || 2);
 const LATENCY_RECONNECT_COOLDOWN_MS = Number(process.env.LATENCY_RECONNECT_COOLDOWN_MS || 600000);
+const FAILOVER_ENABLED = process.env.BOT_FAILOVER_ENABLED === "true";
+const FAILOVER_ROLE = (process.env.BOT_FAILOVER_ROLE || "primary").toLowerCase();
+const FAILOVER_LOCK_ID = process.env.BOT_FAILOVER_LOCK_ID || "natsumi-discord-session";
+const FAILOVER_LEASE_MS = Number(process.env.BOT_FAILOVER_LEASE_MS || 90000);
+const FAILOVER_HEARTBEAT_MS = Number(process.env.BOT_FAILOVER_HEARTBEAT_MS || 30000);
+const FAILOVER_STANDBY_POLL_MS = Number(process.env.BOT_FAILOVER_STANDBY_POLL_MS || 15000);
 
 const discordToken = process.env.TOKEN?.replace(/['"]/g, "").trim();
 const geminiKey = process.env.MY_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
@@ -49,6 +55,10 @@ let highLatencySamples = 0;
 let lastLatencyReconnectAt = 0;
 let reconnectingDiscord = false;
 let mongoConnecting = false;
+let discordActive = false;
+let discordStarting = false;
+let runtimeIntervalsStarted = false;
+let failoverLeaseTimer: NodeJS.Timeout | null = null;
 
 const addLog = (msg: string) => {
   const entry = `[${new Date().toLocaleTimeString()}] ${msg}`;
@@ -233,8 +243,97 @@ const connectMongo = async () => {
   }
 };
 
+const getFailoverLocks = () => mongoose.connection.collection("runtime_locks");
+
+const claimFailoverLease = async () => {
+  if (mongoose.connection.readyState !== 1) return false;
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + FAILOVER_LEASE_MS);
+  const owner = `${FAILOVER_ROLE}:${instanceId}`;
+  const locks = getFailoverLocks();
+
+  const current = await locks.findOne({ _id: FAILOVER_LOCK_ID });
+  const expired = !current?.expiresAt || new Date(current.expiresAt).getTime() <= now.getTime();
+  const ownedByMe = current?.owner === owner;
+
+  if (!current) {
+    try {
+      await locks.insertOne({
+        _id: FAILOVER_LOCK_ID,
+        owner,
+        role: FAILOVER_ROLE,
+        instanceId,
+        botName,
+        updatedAt: now,
+        expiresAt,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  if (!expired && !ownedByMe) return false;
+
+  const result = await locks.updateOne(
+    {
+      _id: FAILOVER_LOCK_ID,
+      owner: current.owner,
+      expiresAt: current.expiresAt,
+    },
+    {
+      $set: {
+        owner,
+        role: FAILOVER_ROLE,
+        instanceId,
+        botName,
+        updatedAt: now,
+        expiresAt,
+      },
+    }
+  );
+
+  return result.modifiedCount === 1 || result.matchedCount === 1;
+};
+
+const renewFailoverLease = async () => {
+  if (!FAILOVER_ENABLED || mongoose.connection.readyState !== 1) return false;
+
+  const now = new Date();
+  const owner = `${FAILOVER_ROLE}:${instanceId}`;
+  const result = await getFailoverLocks().updateOne(
+    { _id: FAILOVER_LOCK_ID, owner },
+    {
+      $set: {
+        updatedAt: now,
+        expiresAt: new Date(now.getTime() + FAILOVER_LEASE_MS),
+      },
+    }
+  );
+
+  if (result.matchedCount !== 1) {
+    addLog("[Failover] Lost active lease; disconnecting Discord to avoid token conflict.");
+    if (client) client.destroy();
+    discordActive = false;
+    setTimeout(() => {
+      runFailoverController().catch((e: any) => addLog(`[Failover] Restart failed: ${e.message}`));
+    }, FAILOVER_STANDBY_POLL_MS);
+    return false;
+  }
+
+  return true;
+};
+
+const startFailoverLeaseRenewal = () => {
+  if (failoverLeaseTimer) clearInterval(failoverLeaseTimer);
+  failoverLeaseTimer = setInterval(() => {
+    renewFailoverLease().catch((e: any) => addLog(`[Failover] Lease renewal failed: ${e.message}`));
+  }, FAILOVER_HEARTBEAT_MS);
+};
+
 const reconnectDiscordGateway = async (reason: string) => {
-  if (!discordToken || !client || reconnectingDiscord) return;
+  if (!discordToken || !client || reconnectingDiscord || !discordActive) return;
   const now = Date.now();
   if (now - lastLatencyReconnectAt < LATENCY_RECONNECT_COOLDOWN_MS) return;
 
@@ -251,6 +350,82 @@ const reconnectDiscordGateway = async (reason: string) => {
     addLog(`[Watchdog] Reconnect failed: ${e.message}`);
   } finally {
     reconnectingDiscord = false;
+  }
+};
+
+const startDiscord = async () => {
+  if (!discordToken || discordStarting || discordActive) return;
+  discordStarting = true;
+  try {
+    addLog(`[Discord] Activating ${FAILOVER_ENABLED ? FAILOVER_ROLE : "single"} instance.`);
+    if (client) {
+      client.destroy();
+      client = null;
+    }
+  client = createClient();
+  await loadBotResources(client);
+  await client.login(discordToken);
+    discordActive = true;
+    if (FAILOVER_ENABLED) startFailoverLeaseRenewal();
+  } finally {
+    discordStarting = false;
+  }
+};
+
+const startRuntimeIntervals = () => {
+  if (runtimeIntervalsStarted) return;
+  runtimeIntervalsStarted = true;
+  setInterval(() => {
+    if (!discordActive || !client?.isReady()) return;
+    client.guilds.cache.forEach((guild: any) => {
+      guild.messages?.cache?.clear?.();
+    });
+    resetRuntimeLag();
+    import("./utils/cache.js").then((m) => m.clearCache()).catch(() => {});
+    if (global.gc) global.gc();
+  }, CACHE_SWEEP_INTERVAL_MS);
+
+  setInterval(() => {
+    if (!discordActive || !client?.isReady()) return;
+    const sample = recordRuntimeSample(client);
+    if (sample.gatewayPing >= 500 || sample.eventLoopLagMs >= 100 || sample.eventLoopMaxMs >= 1000) {
+      addLog(`[Health] WS=${sample.gatewayPing}ms lag=${sample.eventLoopLagMs}/${sample.eventLoopMaxMs}ms memory=${sample.memoryRssMb}MB`);
+    }
+
+    if (!LATENCY_WATCHDOG_ENABLED) return;
+    if (sample.gatewayPing >= LATENCY_RECONNECT_PING_MS && sample.eventLoopLagMs < 100) {
+      highLatencySamples++;
+    } else {
+      highLatencySamples = 0;
+    }
+
+    if (highLatencySamples >= LATENCY_RECONNECT_CONSECUTIVE) {
+      reconnectDiscordGateway(`WS ping ${sample.gatewayPing}ms for ${highLatencySamples} samples`).catch((e) => {
+        addLog(`[Watchdog] Reconnect scheduling failed: ${e.message}`);
+      });
+    }
+  }, HEALTH_SAMPLE_INTERVAL_MS);
+};
+
+const runFailoverController = async () => {
+  addLog(`[Failover] Enabled role=${FAILOVER_ROLE} lock=${FAILOVER_LOCK_ID} lease=${FAILOVER_LEASE_MS}ms.`);
+
+  while (true) {
+    try {
+      const acquired = await claimFailoverLease();
+      if (acquired) {
+        await startDiscord();
+        return;
+      }
+
+      const lock = await getFailoverLocks().findOne({ _id: FAILOVER_LOCK_ID });
+      const expiresIn = lock?.expiresAt ? Math.max(0, new Date(lock.expiresAt).getTime() - Date.now()) : 0;
+      addLog(`[Failover] Standby; active=${lock?.role || "unknown"} expiresIn=${Math.round(expiresIn / 1000)}s.`);
+    } catch (e: any) {
+      addLog(`[Failover] Standby check failed: ${e.message}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, FAILOVER_STANDBY_POLL_MS));
   }
 };
 
@@ -274,40 +449,14 @@ const start = async () => {
     setTimeout(connectMongo, 5000);
   });
 
-  client = createClient();
-  await loadBotResources(client);
-  await client.login(discordToken);
+  startRuntimeIntervals();
 
-  setInterval(() => {
-    if (!client?.isReady()) return;
-    client.guilds.cache.forEach((guild: any) => {
-      guild.messages?.cache?.clear?.();
-    });
-    resetRuntimeLag();
-    import("./utils/cache.js").then((m) => m.clearCache()).catch(() => {});
-    if (global.gc) global.gc();
-  }, CACHE_SWEEP_INTERVAL_MS);
+  if (FAILOVER_ENABLED && mongoose.connection.readyState === 1) {
+    await runFailoverController();
+    return;
+  }
 
-  setInterval(() => {
-    if (!client?.isReady()) return;
-    const sample = recordRuntimeSample(client);
-    if (sample.gatewayPing >= 500 || sample.eventLoopLagMs >= 100 || sample.eventLoopMaxMs >= 1000) {
-      addLog(`[Health] WS=${sample.gatewayPing}ms lag=${sample.eventLoopLagMs}/${sample.eventLoopMaxMs}ms memory=${sample.memoryRssMb}MB`);
-    }
-
-    if (!LATENCY_WATCHDOG_ENABLED) return;
-    if (sample.gatewayPing >= LATENCY_RECONNECT_PING_MS && sample.eventLoopLagMs < 100) {
-      highLatencySamples++;
-    } else {
-      highLatencySamples = 0;
-    }
-
-    if (highLatencySamples >= LATENCY_RECONNECT_CONSECUTIVE) {
-      reconnectDiscordGateway(`WS ping ${sample.gatewayPing}ms for ${highLatencySamples} samples`).catch((e) => {
-        addLog(`[Watchdog] Reconnect scheduling failed: ${e.message}`);
-      });
-    }
-  }, HEALTH_SAMPLE_INTERVAL_MS);
+  await startDiscord();
 };
 
 start();

@@ -30,6 +30,9 @@ KOREANBOTS_TOKEN=""
 KOREANBOTS_BOT_ID=""
 KOREANBOTS_BOT_PAGE_URL=""
 PREMIUM_HEART_ENABLED="true"
+BOT_FAILOVER_ENABLED="false"
+BOT_FAILOVER_ROLE="primary"
+BOT_FAILOVER_LOCK_ID="natsumi-discord-session"
 ```
 
 Recommended for 512MB plans:
@@ -53,6 +56,28 @@ DISABLED_COMMANDS=""
 
 Add command names to `DISABLED_COMMANDS` only if the host still hits memory limits.
 Set `DISABLED_COMMAND_CATEGORIES="NSFW"` only if the host cannot handle NSFW image commands at all.
+
+## Backup host mode
+
+For active/passive failover, keep both hosts running but allow only one to log in to Discord.
+
+Primary host:
+
+```env
+BOT_FAILOVER_ENABLED="true"
+BOT_FAILOVER_ROLE="primary"
+```
+
+Backup host:
+
+```env
+BOT_FAILOVER_ENABLED="true"
+BOT_FAILOVER_ROLE="backup"
+LOG_LIMIT="20"
+MONGO_MAX_POOL_SIZE="1"
+```
+
+Both hosts must share the same `MONGOOSE` value so they can coordinate the lease.
 
 ## GitHub update flow
 

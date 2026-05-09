@@ -78,6 +78,9 @@ KOREANBOTS_TOKEN=""
 KOREANBOTS_BOT_ID=""
 KOREANBOTS_BOT_PAGE_URL=""
 PREMIUM_HEART_ENABLED="true"
+BOT_FAILOVER_ENABLED="false"
+BOT_FAILOVER_ROLE="primary"
+BOT_FAILOVER_LOCK_ID="natsumi-discord-session"
 \`\`\`
 
 ## Recommended 512MB settings
@@ -92,6 +95,21 @@ LATENCY_RECONNECT_PING_MS="3000"
 LATENCY_RECONNECT_CONSECUTIVE="2"
 LATENCY_RECONNECT_COOLDOWN_MS="600000"
 \`\`\`
+
+## Active/passive failover
+
+Run the same token on two hosts only with failover enabled:
+
+\`\`\`env
+BOT_FAILOVER_ENABLED="true"
+BOT_FAILOVER_ROLE="primary"
+BOT_FAILOVER_LOCK_ID="natsumi-discord-session"
+BOT_FAILOVER_LEASE_MS="90000"
+BOT_FAILOVER_HEARTBEAT_MS="30000"
+BOT_FAILOVER_STANDBY_POLL_MS="15000"
+\`\`\`
+
+Use \`BOT_FAILOVER_ROLE="backup"\` on the backup host. Only the host holding the MongoDB lease logs in to Discord.
 
 This repo is auto-generated. Make source changes in \`natsumi-24-7\`.
 `;

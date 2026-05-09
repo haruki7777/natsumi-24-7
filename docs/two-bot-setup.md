@@ -36,6 +36,9 @@ KOREANBOTS_TOKEN="Koreanbots API token"
 KOREANBOTS_BOT_ID="production client id"
 KOREANBOTS_BOT_PAGE_URL="https://koreanbots.dev/bots/production-client-id"
 PREMIUM_HEART_ENABLED="true"
+BOT_FAILOVER_ENABLED="true"
+BOT_FAILOVER_ROLE="primary"
+BOT_FAILOVER_LOCK_ID="natsumi-discord-session"
 NODE_ENV="production"
 LOG_LIMIT="60"
 MONGO_MAX_POOL_SIZE="5"
@@ -101,3 +104,16 @@ Invite the dev bot only to a private test server. Invite the production bot to r
 5. Restart or redeploy the production host from `natsumi-bot-24-7`.
 
 Run `/diagnostics` to confirm which bot is responding. It shows `BOT_NAME` and `BOT_ENV`.
+
+For a backup host, use the same production token and database but set:
+
+```env
+BOT_ENV="backup"
+BOT_NAME="Natsumi Backup"
+BOT_FAILOVER_ENABLED="true"
+BOT_FAILOVER_ROLE="backup"
+LOG_LIMIT="20"
+MONGO_MAX_POOL_SIZE="1"
+```
+
+The backup process stays online in standby mode and logs in only after the primary lease expires.
