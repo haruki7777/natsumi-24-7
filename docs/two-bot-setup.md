@@ -114,6 +114,7 @@ BOT_FAILOVER_ENABLED="true"
 BOT_FAILOVER_ROLE="backup"
 LOG_LIMIT="20"
 MONGO_MAX_POOL_SIZE="1"
+DISABLED_COMMANDS="랭크"
 ```
 
 The backup process stays online in standby mode and logs in only after the primary lease expires.
