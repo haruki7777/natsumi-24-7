@@ -8,6 +8,7 @@ import {
     ButtonStyle,
   } from "discord.js";
   import ticket_Table from "../../models/ticketDB.js";
+  import { buildPremiumHeartPrompt, checkPremiumHeart } from "../../utils/premiumHeart.js";
   
   export default {
     data: new SlashCommandBuilder()
@@ -25,7 +26,12 @@ import {
      *
      * @param {import("discord.js").ChatInputCommandInteraction} interaction
      */
-    async execute(interaction) { 
+    async execute(interaction) {
+      const heart = await checkPremiumHeart(interaction.user.id);
+      if (!heart.ok) {
+        return interaction.reply(buildPremiumHeartPrompt(interaction.user.id, heart));
+      }
+
       await interaction.deferReply();
       const channel = interaction.options.getChannel("채널");
       const ticket_Find = await ticket_Table.findOne({
@@ -87,4 +93,3 @@ import {
       }
     },
   };
-  
