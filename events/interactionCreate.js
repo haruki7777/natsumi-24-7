@@ -1,5 +1,18 @@
 import { Events, ChannelType } from "discord.js";
 import ProcessedMessage from "../models/ProcessedMessage.js";
+import { buildPremiumHeartPrompt, checkPremiumHeart } from "../utils/premiumHeart.js";
+
+const HEART_REQUIRED_COMMANDS = new Set([
+  "nsfw",
+  "nsfw2",
+  "sfw",
+  "애니짤",
+]);
+
+const needsPremiumHeart = (commandName) => {
+  const normalized = String(commandName || "").toLowerCase();
+  return HEART_REQUIRED_COMMANDS.has(normalized) || HEART_REQUIRED_COMMANDS.has(commandName);
+};
 
 export default {
   name: Events.InteractionCreate,
@@ -33,6 +46,13 @@ export default {
       }
 
       try {
+        if (needsPremiumHeart(commandName)) {
+          const heart = await checkPremiumHeart(interaction.user.id);
+          if (!heart.ok) {
+            return interaction.reply(buildPremiumHeartPrompt(interaction.user.id, heart)).catch(() => {});
+          }
+        }
+
         if (!interaction.deferred && !interaction.replied) {
            await command.execute(interaction, client);
         }
