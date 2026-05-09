@@ -6,6 +6,7 @@ const positiveCache = new Map();
 const negativeCache = new Map();
 const cleanEnv = (value) => value?.replace?.(/['"]/g, "").trim();
 const PASS_MS = Number(process.env.PREMIUM_HEART_PASS_MS || 12 * 60 * 60 * 1000);
+const CLEANUP_MS = Math.max(Number(process.env.PREMIUM_HEART_CLEANUP_MS || 10 * 60 * 1000), 60 * 1000);
 
 export const getPremiumHeartConfig = () => {
   const botId = cleanEnv(process.env.KOREANBOTS_BOT_ID) || cleanEnv(process.env.ID);
@@ -38,6 +39,28 @@ const writeCached = (cache, userId, value, ttlMs) => {
 export const clearPremiumHeartCache = (userId) => {
   positiveCache.delete(userId);
   negativeCache.delete(userId);
+};
+
+export const cleanupExpiredPremiumHeartPasses = async () => {
+  const result = await PremiumHeartPass.deleteMany({ expiresAt: { $lte: new Date() } });
+  return result.deletedCount || 0;
+};
+
+export const startPremiumHeartCleanup = (logger = console.log) => {
+  if (globalThis.__natsumiPremiumHeartCleanupTimer) return globalThis.__natsumiPremiumHeartCleanupTimer;
+
+  const run = async () => {
+    try {
+      const deleted = await cleanupExpiredPremiumHeartPasses();
+      if (deleted > 0) logger(`[PremiumHeart] Expired passes cleaned: ${deleted}`);
+    } catch (error) {
+      logger(`[PremiumHeart] Cleanup failed: ${error.message}`);
+    }
+  };
+
+  setTimeout(run, 30 * 1000);
+  globalThis.__natsumiPremiumHeartCleanupTimer = setInterval(run, CLEANUP_MS);
+  return globalThis.__natsumiPremiumHeartCleanupTimer;
 };
 
 const readStoredPass = async (userId) => {
@@ -97,8 +120,8 @@ export const buildPremiumHeartPrompt = (userId, checkResult = {}) => {
   const config = getPremiumHeartConfig();
   const pageUrl = checkResult.pageUrl || config.pageUrl || "https://koreanbots.dev";
   const embed = new EmbedBuilder()
-    .setTitle("프리미엄 하트가 필요해")
-    .setDescription("한디리 하트 인증은 유저별로 12시간 동안 유지돼. 시간이 지나면 다시 잠겨 😼")
+    .setTitle("🦊 나츠미 하트 인증이 필요해")
+    .setDescription("흥... `/sfw`, `/애니짤`, `/nsfw`, `/nsfw2`는 한디리 하트를 눌러야 열려. 인증은 유저별로 12시간만 유지된다구 😤")
     .setColor("#ff4f8b")
     .setTimestamp();
 
@@ -111,7 +134,7 @@ export const buildPremiumHeartPrompt = (userId, checkResult = {}) => {
   }
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setLabel("❤️ 프리미엄 하트 건네기").setStyle(ButtonStyle.Link).setURL(pageUrl),
+    new ButtonBuilder().setLabel("❤️ 한디리 하트 누르기").setStyle(ButtonStyle.Link).setURL(pageUrl),
     new ButtonBuilder().setCustomId(`PremiumHeartCheck_${userId}`).setLabel("✅ 하트 확인하기").setStyle(ButtonStyle.Success)
   );
 
