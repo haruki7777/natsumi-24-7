@@ -1,52 +1,61 @@
-import { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+
+const canKick = (interaction, member) => {
+  if (!member) return "서버에서 해당 멤버를 찾을 수 없어요.";
+  if (member.id === interaction.user.id) return "자기 자신은 추방할 수 없어요.";
+  if (member.id === interaction.guild.ownerId) return "서버 소유자는 추방할 수 없어요.";
+  if (interaction.member.roles.highest.comparePositionTo(member.roles.highest) <= 0 && interaction.guild.ownerId !== interaction.user.id) {
+    return "나보다 같거나 높은 역할의 멤버는 추방할 수 없어요.";
+  }
+  if (interaction.guild.members.me.roles.highest.comparePositionTo(member.roles.highest) <= 0) {
+    return "나츠미 역할이 대상보다 낮아서 추방할 수 없어요.";
+  }
+  return null;
+};
 
 export default {
-    data: new SlashCommandBuilder()
-        .setName("추방")
-        .setDescription("눈에 거슬리는 녀석을 숲 밖으로 쫓아낼게! (권한 필요)")
-        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
-        .addUserOption(option =>
-            option.setName("유저")
-                .setDescription("쫓아낼 녀석을 선택해.")
-                .setRequired(true)
-        )
-        .addStringOption(option =>
-            option.setName("사유")
-                .setDescription("왜 쫓아내는지 이유는 말해줘야지?")
-        ),
+  data: new SlashCommandBuilder()
+    .setName("킥")
+    .setDescription("멤버를 서버에서 추방해요.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
+    .addUserOption((option) =>
+      option.setName("대상").setDescription("추방할 멤버를 선택해줘.").setRequired(true)
+    )
+    .addStringOption((option) =>
+      option.setName("사유").setDescription("추방 사유를 적어줘.").setMaxLength(512)
+    )
+    .addBooleanOption((option) =>
+      option.setName("dm알림").setDescription("대상에게 추방 안내 DM을 보낼까요?")
+    ),
 
-    async execute(interaction) {
-        await interaction.deferReply();
-        const { options } = interaction;
+  async execute(interaction) {
+    await interaction.deferReply();
 
-        const user = options.getUser("유저");
-        const reason = options.getString("사유") || "나츠미 마음에 안 들어!";
+    const user = interaction.options.getUser("대상", true);
+    const reason = interaction.options.getString("사유") || "사유 없음";
+    const sendDm = interaction.options.getBoolean("dm알림") ?? true;
+    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
-        const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    const blockReason = canKick(interaction, member);
+    if (blockReason) return interaction.editReply({ content: `**${blockReason}**` });
+    if (!member.kickable) return interaction.editReply({ content: "**내 권한으로는 이 멤버를 추방할 수 없어요.**" });
 
-        if (!member) {
-            return interaction.editReply({ content: "흥! 그런 녀석은 이 숲에 있지도 않은걸? 바보야?" });
-        }
+    const embed = new EmbedBuilder()
+      .setColor("#FF8F3D")
+      .setTitle("멤버 추방 완료")
+      .setThumbnail(user.displayAvatarURL({ size: 256 }))
+      .addFields(
+        { name: "대상", value: `${user} (${user.tag})\nID: ${user.id}` },
+        { name: "처리자", value: `${interaction.user} (${interaction.user.tag})` },
+        { name: "사유", value: reason }
+      )
+      .setTimestamp();
 
-        if (member.roles.highest.position >= interaction.member.roles.highest.position) {
-            return interaction.editReply({ 
-                embeds: [new EmbedBuilder().setTitle("🦊 권한 부족!").setDescription(`네 위계가 ${user.username}보다 낮잖아! \n어디서 감히 명령질이야? 흥!`).setColor('#ED4245')]
-            });
-        }
-
-        if (!member.kickable) {
-            return interaction.editReply({ content: "저 녀석은 나도 못 건드린다구! 너보다 높은 분 아냐?" });
-        }
-
-        await member.kick(reason);
-
-        const embed = new EmbedBuilder()
-            .setTitle("🏮 숲에서 추방 완료!")
-            .setDescription(`콘콘! **${user.username}** 녀석을 시원하게 쫓아냈어!\n\n**사유:** \`${reason}\`\n\n다시는 내 눈앞에 나타나지 말라구! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`)
-            .setColor('#FF7F50');
-
-        await interaction.editReply({
-            embeds: [embed],
-        });
+    if (sendDm) {
+      await user.send({ embeds: [embed] }).catch(() => null);
     }
-}
+
+    await member.kick(`${interaction.user.tag}: ${reason}`);
+    return interaction.editReply({ embeds: [embed] });
+  },
+};
