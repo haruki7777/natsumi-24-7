@@ -17,6 +17,7 @@ import {
   recordRuntimeSample,
   resetRuntimeLag,
 } from "./utils/runtimeHealth.js";
+import { startPremiumHeartCleanup } from "./utils/premiumHeart.js";
 
 dotenv.config();
 
@@ -375,6 +376,8 @@ const startDiscord = async () => {
 const startRuntimeIntervals = () => {
   if (runtimeIntervalsStarted) return;
   runtimeIntervalsStarted = true;
+  startPremiumHeartCleanup(addLog);
+
   setInterval(() => {
     if (!discordActive || !client?.isReady()) return;
     client.guilds.cache.forEach((guild: any) => {
