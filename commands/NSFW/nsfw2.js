@@ -11,7 +11,26 @@ const categories = [
   { name: "✨ Kanna", value: "kanna" },
   { name: "🌸 Holo", value: "holo" },
   { name: "🎥 PGif", value: "pgif" },
-  { name: "💫 4K", value: "4k" }
+  { name: "💫 4K", value: "4k" },
+  { name: "🍑 Anal", value: "anal" },
+  { name: "💦 Blowjob", value: "blowjob" },
+  { name: "🔗 Collared", value: "collared" },
+  { name: "🎭 Cosplay", value: "cosplay" },
+  { name: "🍼 Cumsluts", value: "cumsluts" },
+  { name: "🦶 Feet", value: "feet" },
+  { name: "🌲 Gonewild", value: "gonewild" },
+  { name: "🐱 Pussy", value: "pussy" },
+  { name: "🦵 Thighs", value: "thighs" },
+  { name: "👙 Swimsuit", value: "swimsuit" },
+  { name: "🐙 Tentacle", value: "tentacle" },
+  { name: "🩲 Pantsu", value: "pantsu" },
+  { name: "🦊 Neko", value: "neko" },
+  { name: "🍶 Nakadashi", value: "nakadashi" },
+  { name: "🚻 Futa", value: "futa" },
+  { name: "💧 Pee", value: "pee" },
+  { name: "🍑 Yaoi", value: "yaoi" },
+  { name: "💞 Yuri", value: "yuri" },
+  { name: "🤰 Tummy", value: "tummy" },
 ];
 
 export default {
