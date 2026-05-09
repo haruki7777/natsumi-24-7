@@ -17,7 +17,8 @@ const categories = [
 export default {
   data: new SlashCommandBuilder()
     .setName("nsfw2")
-    .setDescription("NSFW 카테고리를 선택해서 이미지를 불러와 😼"),
+    .setDescription("NSFW 카테고리를 선택해서 이미지를 불러와 😼")
+    .setNSFW(true),
 
   async execute(interaction) {
     if (!interaction.channel?.nsfw) {
