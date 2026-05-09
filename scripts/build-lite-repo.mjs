@@ -31,12 +31,15 @@ const packageJson = {
   },
   dependencies: {
     "@google/generative-ai": "^0.24.1",
+    "@napi-rs/canvas": "^1.0.0",
     axios: "^1.15.2",
+    "discord-html-transcripts": "^3.1.4",
     "discord.js": "^14.9.0",
     dotenv: "^16.0.3",
     mongoose: "^7.0.3",
     "node-fetch": "^2.6.9",
     tsx: "^4.21.0",
+    typescript: "^6.0.3",
   },
   engines: {
     node: ">=20",
@@ -87,7 +90,6 @@ NODE_ENV="production"
 LOG_LIMIT="60"
 MONGO_MAX_POOL_SIZE="5"
 DISABLED_COMMAND_CATEGORIES="NSFW"
-DISABLED_COMMANDS="랭크"
 LATENCY_WATCHDOG_ENABLED="true"
 LATENCY_RECONNECT_PING_MS="3000"
 LATENCY_RECONNECT_CONSECUTIVE="2"

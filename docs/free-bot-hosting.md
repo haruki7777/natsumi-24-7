@@ -75,7 +75,6 @@ BOT_FAILOVER_ENABLED="true"
 BOT_FAILOVER_ROLE="backup"
 LOG_LIMIT="20"
 MONGO_MAX_POOL_SIZE="1"
-DISABLED_COMMANDS="랭크"
 ```
 
 Both hosts must share the same `MONGOOSE` value so they can coordinate the lease.
