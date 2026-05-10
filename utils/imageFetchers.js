@@ -124,25 +124,48 @@ const nekobotNsfwMap = {
 };
 
 export const fetchSfwImage = async (category) => {
-  if (waifuImSfw.has(category)) {
-    const resp = await request("https://api.waifu.im/search", {
-      params: { included_tags: category, is_nsfw: false },
-    }).catch(() => null);
-    const url = resp?.data?.images?.[0]?.url;
-    if (url) return { url, source: "waifu.im" };
+  const candidates = [];
+
+  if (waifuPicsSfw.has(category)) {
+    candidates.push(async () => {
+      const resp = await request(`https://api.waifu.pics/sfw/${category}`);
+      const url = resp?.data?.url;
+      if (!url) throw new Error("waifu.pics missing url");
+      return { url, source: "waifu.pics" };
+    });
   }
 
   if (nekosBestSfw.has(category)) {
-    const resp = await request(`https://nekos.best/api/v2/${category}`).catch(() => null);
-    const url = resp?.data?.results?.[0]?.url;
-    if (url) return { url, source: "nekos.best" };
+    candidates.push(async () => {
+      const resp = await request(`https://nekos.best/api/v2/${category}`);
+      const url = resp?.data?.results?.[0]?.url;
+      if (!url) throw new Error("nekos.best missing url");
+      return { url, source: "nekos.best" };
+    });
   }
 
-  if (waifuPicsSfw.has(category)) {
-    const resp = await request(`https://api.waifu.pics/sfw/${category}`).catch(() => null);
-    const url = resp?.data?.url;
-    if (url) return { url, source: "waifu.pics" };
+  if (waifuImSfw.has(category)) {
+    candidates.push(async () => {
+      const resp = await request("https://api.waifu.im/search", {
+        params: { included_tags: category, is_nsfw: false },
+      });
+      const url = resp?.data?.images?.[0]?.url;
+      if (!url) throw new Error("waifu.im missing url");
+      return { url, source: "waifu.im" };
+    });
   }
+
+  if (candidates.length > 0) {
+    try {
+      return await Promise.any(candidates.map((candidate) => candidate()));
+    } catch {
+      // Fall through to final fallback.
+    }
+  }
+
+  const fallbackNekos = await request("https://nekos.best/api/v2/waifu").catch(() => null);
+  const fallbackNekosUrl = fallbackNekos?.data?.results?.[0]?.url;
+  if (fallbackNekosUrl) return { url: fallbackNekosUrl, source: "nekos.best fallback" };
 
   const fallback = await request("https://api.waifu.pics/sfw/waifu").catch(() => null);
   const url = fallback?.data?.url;

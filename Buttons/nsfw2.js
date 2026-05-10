@@ -11,17 +11,11 @@ export default {
 
     const ownerId = interaction.customId.split("_").at(-1);
     if (ownerId && ownerId !== interaction.user.id) {
-      return interaction.reply({
-        content: "**이 선택 메뉴는 명령어를 실행한 사람만 사용할 수 있어요.**",
-        ephemeral: true,
-      });
+      return interaction.reply({ content: "**이 선택 메뉴는 명령어를 실행한 사람만 사용할 수 있어요.**", ephemeral: true });
     }
 
     if (!interaction.channel?.nsfw) {
-      return interaction.reply({
-        content: "**NSFW 전용 채널에서만 사용할 수 있어요.**",
-        ephemeral: true,
-      });
+      return interaction.reply({ content: "**NSFW 전용 채널에서만 사용할 수 있어요.**", ephemeral: true });
     }
 
     const heart = await checkPremiumHeart(interaction.user.id);

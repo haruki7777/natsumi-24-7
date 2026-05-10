@@ -1,13 +1,13 @@
 import { EmbedBuilder } from "discord.js";
 import { buildPremiumHeartPrompt, checkPremiumHeart } from "../utils/premiumHeart.js";
-import { fetchNsfw3Image, getCategoryLabel, nsfw3Categories } from "../utils/imageFetchers.js";
+import { fetchNsfwImage, getCategoryLabel, nsfwCategories } from "../utils/imageFetchers.js";
 
 export default {
-  name: "nsfw3",
+  name: "nsfw",
 
   async execute(interaction) {
     if (!interaction.isStringSelectMenu()) return;
-    if (!interaction.customId.startsWith("nsfw3_category_")) return;
+    if (!interaction.customId.startsWith("nsfw_category_")) return;
 
     const ownerId = interaction.customId.split("_").at(-1);
     if (ownerId && ownerId !== interaction.user.id) {
@@ -24,18 +24,18 @@ export default {
     }
 
     const category = interaction.values?.[0];
-    if (!nsfw3Categories.some((item) => item.value === category)) {
+    if (!nsfwCategories.some((item) => item.value === category)) {
       return interaction.reply({ content: "**없는 카테고리예요. 다시 선택해줘.**", ephemeral: true });
     }
 
     await interaction.deferUpdate();
 
     try {
-      const image = await fetchNsfw3Image(category);
-      const label = getCategoryLabel(nsfw3Categories, category);
+      const image = await fetchNsfwImage(category);
+      const label = getCategoryLabel(nsfwCategories, category);
       const embed = new EmbedBuilder()
         .setColor("#FF4F8B")
-        .setTitle(`NSFW3 · ${label}`)
+        .setTitle(`NSFW · ${label}`)
         .setDescription("12시간 하트 패스 확인 완료.")
         .setImage(image.url)
         .setFooter({ text: `Source: ${image.source}` })
@@ -43,7 +43,7 @@ export default {
 
       return interaction.editReply({ embeds: [embed], components: [] });
     } catch (error) {
-      console.error(`[NSFW3] Image fetch failed (${category}):`, error.message);
+      console.error(`[NSFW] Image fetch failed (${category}):`, error.message);
       return interaction.editReply({
         content: "**이미지를 불러오지 못했어요. 다른 카테고리로 다시 시도해줘.**",
         embeds: [],
