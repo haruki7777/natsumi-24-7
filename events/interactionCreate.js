@@ -7,7 +7,6 @@ const HEART_REQUIRED_COMMANDS = new Set([
   "nsfw3",
   "sfw",
   "애니짤",
-  "환영인사설정",
 ]);
 
 const needsPremiumHeart = (commandName) => {

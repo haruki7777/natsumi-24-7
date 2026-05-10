@@ -175,7 +175,6 @@ const createClient = () => {
   const intents = new IntentsBitField();
   intents.add(
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
