@@ -1,72 +1,55 @@
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } from "discord.js";
+import { ActionRowBuilder, EmbedBuilder, SlashCommandBuilder, StringSelectMenuBuilder } from "discord.js";
+import { buildPremiumHeartPrompt, checkPremiumHeart } from "../../utils/premiumHeart.js";
+import { nsfw2Categories } from "../../utils/imageFetchers.js";
 
-const categories = [
-  { name: "🔥 Hentai", value: "hentai" },
-  { name: "🍑 Ass", value: "ass" },
-  { name: "🍒 Boobs", value: "boobs" },
-  { name: "🍼 Paizuri", value: "paizuri" },
-  { name: "🐱 HNeko", value: "hneko" },
-  { name: "🦊 HKitsune", value: "hkitsune" },
-  { name: "🎀 Kemonomimi", value: "kemonomimi" },
-  { name: "✨ Kanna", value: "kanna" },
-  { name: "🌸 Holo", value: "holo" },
-  { name: "🎥 PGif", value: "pgif" },
-  { name: "💫 4K", value: "4k" },
-  { name: "🍑 Anal", value: "anal" },
-  { name: "💦 Blowjob", value: "blowjob" },
-  { name: "🔗 Collared", value: "collared" },
-  { name: "🎭 Cosplay", value: "cosplay" },
-  { name: "🍼 Cumsluts", value: "cumsluts" },
-  { name: "🦶 Feet", value: "feet" },
-  { name: "🌲 Gonewild", value: "gonewild" },
-  { name: "🐱 Pussy", value: "pussy" },
-  { name: "🦵 Thighs", value: "thighs" },
-  { name: "👙 Swimsuit", value: "swimsuit" },
-  { name: "🐙 Tentacle", value: "tentacle" },
-  { name: "🩲 Pantsu", value: "pantsu" },
-  { name: "🦊 Neko", value: "neko" },
-  { name: "🍶 Nakadashi", value: "nakadashi" },
-  { name: "🚻 Futa", value: "futa" },
-  { name: "💧 Pee", value: "pee" },
-  { name: "🍑 Yaoi", value: "yaoi" },
-  { name: "💞 Yuri", value: "yuri" },
-  { name: "🤰 Tummy", value: "tummy" },
-];
+const chunk = (items, size) => {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+};
 
 export default {
   data: new SlashCommandBuilder()
     .setName("nsfw2")
-    .setDescription("NSFW 카테고리를 선택해서 이미지를 불러와 😼")
+    .setDescription("NSFW 카테고리를 메뉴에서 선택해 이미지를 불러와요.")
     .setNSFW(true),
 
   async execute(interaction) {
     if (!interaction.channel?.nsfw) {
       return interaction.reply({
-        content: "흥... NSFW 채널에서만 사용할 수 있어 😤",
+        content: "**NSFW 전용 채널에서만 사용할 수 있어요.**",
         ephemeral: true,
       });
     }
 
-    const menu = new StringSelectMenuBuilder()
-      .setCustomId("nsfw2_category")
-      .setPlaceholder("카테고리를 선택해 😼")
-      .addOptions(
-        categories.map((c) => ({
-          label: c.name,
-          value: c.value,
-        }))
-      );
+    const heart = await checkPremiumHeart(interaction.user.id);
+    if (!heart.ok) {
+      return interaction.reply(buildPremiumHeartPrompt(interaction.user.id, heart));
+    }
 
-    const row = new ActionRowBuilder().addComponents(menu);
+    const rows = chunk(nsfw2Categories, 25).map((categories, index) =>
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`nsfw2_category_${index + 1}_${interaction.user.id}`)
+          .setPlaceholder(index === 0 ? "NSFW2 카테고리 선택" : "NSFW2 추가 카테고리 선택")
+          .addOptions(categories.map((category) => ({
+            label: category.name,
+            value: category.value,
+          })))
+      )
+    );
 
     const embed = new EmbedBuilder()
-      .setTitle("🦊 NSFW2 카테고리")
-      .setDescription("원하는 카테고리를 골라봐 😼")
-      .setColor("#ff4f8b");
+      .setColor("#FF4F8B")
+      .setTitle("NSFW2 카테고리")
+      .setDescription("프리미엄 하트 인증 확인 완료. 원하는 카테고리를 선택해줘.")
+      .setTimestamp();
 
     return interaction.reply({
       embeds: [embed],
-      components: [row],
+      components: rows,
     });
   },
 };

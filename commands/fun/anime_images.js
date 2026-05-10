@@ -1,156 +1,45 @@
-
-import axios from "axios";
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
 import { buildPremiumHeartPrompt, checkPremiumHeart } from "../../utils/premiumHeart.js";
+import { fetchSfwImage, getCategoryLabel, sfwCategories } from "../../utils/imageFetchers.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("애니짤")
-    .setDescription("귀여운 애니메이션 이미지를 보여줄게! 콘콘!")
+    .setDescription("귀여운 애니 이미지를 불러와요.")
     .addStringOption((option) =>
       option
         .setName("카테고리")
-        .setDescription("어떤 종류의 이미지를 보고 싶어?")
+        .setDescription("보고 싶은 애니 이미지 종류를 선택해줘.")
         .setRequired(true)
-        .addChoices(
-          { name: "와이프 (Waifu)", value: "waifu" },
-          { name: "네코 (Neko)", value: "neko" },
-          { name: "키츠네 (Kitsune)", value: "kitsune" },
-          { name: "허스밴도 (Husbando)", value: "husbando" },
-          { name: "껴안기 (Hug)", value: "hug" },
-          { name: "키스 (Kiss)", value: "kiss" },
-          { name: "두드리기 (Pat) ", value: "pat" },
-          { name: "싸대기 (Slap)", value: "slap" },
-          { name: "스마일 (Smile)", value: "smile" },
-          { name: "윙크 (Wink)", value: "wink" },
-          { name: "댄스 (Dance)", value: "dance" },
-          { name: "행복 (Happy)", value: "happy" },
-          { name: "하이파이브 (Highfive)", value: "highfive" },
-          { name: "깨물기 (Bite)", value: "bite" },
-          { name: "찌르기 (Poke)", value: "poke" },
-          { name: "부끄러움 (Blush)", value: "blush" },
-          { name: "잘난척 (Smug)", value: "smug" },
-          { name: "졸림 (Sleep)", value: "sleep" },
-          { name: "먹기 (Nom)", value: "nom" },
-          { name: "웃기 (Laugh)", value: "laugh" },
-          { name: "삐짐 (Pout)", value: "pout" },
-          { name: "바보 (Baka)", value: "baka" },
-          { name: "화남 (Angry)", value: "angry" }
-        )
+        .addChoices(...sfwCategories.map((category) => ({ name: category.name, value: category.value })))
     ),
-  /**
-   * @param {import("discord.js").ChatInputCommandInteraction} interaction
-   */
+
   async execute(interaction) {
     const heart = await checkPremiumHeart(interaction.user.id);
     if (!heart.ok) {
       return interaction.reply(buildPremiumHeartPrompt(interaction.user.id, heart));
     }
 
-    if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
-    const category = interaction.options.getString("카테고리");
- 
-    let imageUrl = "";
-    let source = "";
+    await interaction.deferReply();
 
-    // Common headers
-    const headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 NatsumiBot/1.2"
-    };
-
-    // Mapping for waifu.im SFW
-    const waifuImSfwTags = ["waifu", "maid", "marin-kitagawa", "mori-calliope", "raiden-shogun", "selfies", "uniform", "oppai"];
-    
-    // Mapping for nekos.best SFW
-    const nekosBestEndpoints = [
-        "waifu", "neko", "kitsune", "husbando", "bored", "busy", "cheer", "clap", "cry", "cuddle", 
-        "dance", "facepalm", "feed", "handhold", "happy", "highfive", "hug", "kick", "kiss", 
-        "laugh", "lick", "lurk", "nod", "nom", "nope", "pat", "peck", "poke", "pout", "punch", 
-        "shoot", "shrug", "slap", "sleep", "smile", "smug", "stare", "think", "thumbsup", "tickle", "wave", "wink", "yeet"
-    ];
-
-    // Mapping for waifu.pics SFW
-    const waifuPicsSfwTags = [
-        "waifu", "neko", "shinobu", "megumin", "bully", "cuddle", "cry", "hug", "awoo", "kiss", 
-        "lick", "pat", "smug", "bonk", "yeet", "blush", "smile", "wave", "highfive", "handhold", 
-        "nom", "bite", "glomp", "slap", "kill", "kick", "happy", "wink", "poke", "dance", "cringe"
-    ];
-
+    const category = interaction.options.getString("카테고리", true);
     try {
-      // 1순위: waifu.im (Priority as requested)
-      if (waifuImSfwTags.includes(category)) {
-        try {
-          const resp = await axios.get(`https://api.waifu.im/search`, {
-            params: { included_tags: category, is_nsfw: false },
-            headers,
-            timeout: 7000
-          });
-          if (resp.data.images && resp.data.images[0]) {
-            imageUrl = resp.data.images[0].url;
-            source = "waifu.im";
-          }
-        } catch (e) {
-           // Skip to next source
-        }
-      }
-
-      // 2순위: nekos.best
-      if (!imageUrl && nekosBestEndpoints.includes(category)) {
-        try {
-          const resp = await axios.get(`https://nekos.best/api/v2/${category}`, { 
-            headers,
-            timeout: 7000 
-          });
-          if (resp.data.results && resp.data.results[0]) {
-            imageUrl = resp.data.results[0].url;
-            source = "nekos.best";
-          }
-        } catch (e) {
-           // Skip
-        }
-      }
-
-      // 3순위: waifu.pics
-      if (!imageUrl && waifuPicsSfwTags.includes(category)) {
-        try {
-          const resp = await axios.get(`https://api.waifu.pics/sfw/${category}`, { 
-            headers,
-            timeout: 7000 
-          });
-          if (resp.data.url) {
-            imageUrl = resp.data.url;
-            source = "waifu.pics";
-          }
-        } catch (e) {
-           // Skip
-        }
-      }
-
-      // Final fallback
-      if (!imageUrl) {
-          try {
-              const resp = await axios.get(`https://api.waifu.pics/sfw/waifu`, { headers, timeout: 5000 });
-              if (resp.data.url) {
-                  imageUrl = resp.data.url;
-                  source = "waifu.pics (fallback)";
-              }
-          } catch (e) {}
-      }
-
-      if (!imageUrl) throw new Error("Image not found");
-
+      const image = await fetchSfwImage(category);
+      const label = getCategoryLabel(sfwCategories, category);
       const embed = new EmbedBuilder()
-        .setTitle(`✨ ${category}!! 어때, 귀엽지?`)
-        .setImage(imageUrl)
-        .setAuthor({ name: "숲의 화랑", iconURL: interaction.client.user.displayAvatarURL() })
-        .setFooter({ text: `영력 소모: ${source} | 나츠미의 보관함` })
-        .setTimestamp()
-        .setColor("#FF7F50");
+        .setColor("#FF8F3D")
+        .setTitle(`애니짤 · ${label}`)
+        .setDescription("프리미엄 하트 인증 확인 완료.")
+        .setImage(image.url)
+        .setFooter({ text: `Source: ${image.source}` })
+        .setTimestamp();
 
-      await interaction.editReply({ embeds: [embed] });
-    } catch (err) {
-      console.error(err);
-      interaction.editReply({ content: "**으익! 이미지 서버에 안개가 꼈어! (오류 발생) 나중에 다시 해봐! 흥!**" });
+      return interaction.editReply({ embeds: [embed] });
+    } catch (error) {
+      console.error(`[AnimeImages] Image fetch failed (${category}):`, error.message);
+      return interaction.editReply({
+        content: "**이미지를 불러오지 못했어요. 잠시 뒤 다시 시도해줘.**",
+      });
     }
   },
 };
