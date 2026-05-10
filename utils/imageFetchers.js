@@ -71,6 +71,22 @@ export const nsfw2Categories = [
   { name: "Yuri", value: "yuri" },
 ];
 
+export const nsfw3Categories = [
+  { name: "Collared", value: "collared" },
+  { name: "Cosplay", value: "cosplay" },
+  { name: "Cumsluts", value: "cumsluts" },
+  { name: "Feet", value: "feet" },
+  { name: "Gonewild", value: "gonewild" },
+  { name: "Swimsuit", value: "swimsuit" },
+  { name: "Tentacle", value: "tentacle" },
+  { name: "Pantsu", value: "pantsu" },
+  { name: "Neko", value: "neko" },
+  { name: "Nakadashi", value: "nakadashi" },
+  { name: "Futa", value: "futa" },
+  { name: "Pee", value: "pee" },
+  { name: "Tummy", value: "tummy" },
+];
+
 export const getCategoryLabel = (categories, value) => {
   return categories.find((category) => category.value === value)?.name || value;
 };
@@ -167,3 +183,5 @@ export const fetchNsfw2Image = async (category) => {
   if (url) return { url, source: "nekobot.xyz" };
   return fetchNsfwImage(category);
 };
+
+export const fetchNsfw3Image = fetchNsfw2Image;

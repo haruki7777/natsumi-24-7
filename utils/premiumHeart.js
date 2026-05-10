@@ -12,6 +12,7 @@ export const getPremiumHeartConfig = () => {
   const botId = cleanEnv(process.env.KOREANBOTS_BOT_ID) || cleanEnv(process.env.ID);
   const token = cleanEnv(process.env.KOREANBOTS_TOKEN);
   const pageUrl = cleanEnv(process.env.KOREANBOTS_BOT_PAGE_URL) || (botId ? `https://koreanbots.dev/bots/${botId}` : null);
+
   return {
     botId,
     token,
@@ -66,11 +67,13 @@ export const startPremiumHeartCleanup = (logger = console.log) => {
 const readStoredPass = async (userId) => {
   const pass = await PremiumHeartPass.findOne({ userId }).lean();
   if (!pass) return null;
+
   const expiresAt = new Date(pass.expiresAt);
   if (expiresAt.getTime() <= Date.now()) {
     await PremiumHeartPass.deleteOne({ userId });
     return null;
   }
+
   return { ok: true, voted: true, reason: "stored_pass", expiresAt };
 };
 
@@ -81,6 +84,7 @@ const saveStoredPass = async (userId) => {
     { userId, lastVerifiedAt: new Date(), expiresAt, source: "koreanbots" },
     { upsert: true, new: true }
   );
+  clearPremiumHeartCache(userId);
   return expiresAt;
 };
 
@@ -92,23 +96,34 @@ export const checkPremiumHeart = async (userId, options = {}) => {
   if (!options.force) {
     const stored = await readStoredPass(userId);
     if (stored) return stored;
-    const positive = readCached(positiveCache, userId);
-    if (positive) return positive;
+
     const negative = readCached(negativeCache, userId);
     if (negative) return negative;
+
+    const result = { ok: false, voted: false, reason: "pass_required", pageUrl: config.pageUrl };
+    writeCached(negativeCache, userId, result, config.negativeCacheMs);
+    return result;
   }
 
   try {
     const response = await axios.get(`https://koreanbots.dev/api/v2/bots/${config.botId}/vote`, {
       timeout: Number(process.env.PREMIUM_HEART_TIMEOUT_MS || 3000),
-      headers: { Authorization: config.token, "User-Agent": "NatsumiBot/5.9.5" },
+      headers: { Authorization: config.token, "User-Agent": "NatsumiBot/6.0" },
       params: { userID: userId },
     });
 
     const data = response.data?.data || response.data;
     const voted = Boolean(data?.voted);
     const expiresAt = voted ? await saveStoredPass(userId) : null;
-    const result = { ok: voted, voted, reason: voted ? "voted" : "not_voted", lastVote: data?.lastVote, expiresAt, pageUrl: config.pageUrl };
+    const result = {
+      ok: voted,
+      voted,
+      reason: voted ? "voted" : "not_voted",
+      lastVote: data?.lastVote,
+      expiresAt,
+      pageUrl: config.pageUrl,
+    };
+
     writeCached(voted ? positiveCache : negativeCache, userId, result, voted ? config.positiveCacheMs : config.negativeCacheMs);
     return result;
   } catch (error) {
@@ -120,22 +135,27 @@ export const buildPremiumHeartPrompt = (userId, checkResult = {}) => {
   const config = getPremiumHeartConfig();
   const pageUrl = checkResult.pageUrl || config.pageUrl || "https://koreanbots.dev";
   const embed = new EmbedBuilder()
-    .setTitle("🦊 나츠미 하트 인증이 필요해")
-    .setDescription("흥... `/sfw`, `/애니짤`, `/nsfw`, `/nsfw2`는 한디리 하트를 눌러야 열려. 인증은 유저별로 12시간만 유지된다구 😤")
+    .setTitle("나츠미 프리미엄 하트 인증 필요")
+    .setDescription(
+      "`/sfw`, `/애니짤`, `/nsfw`, `/nsfw2`, `/nsfw3`는 하트 확인 버튼으로 12시간 패스를 받아야 사용할 수 있어요.\n" +
+      "12시간이 지나면 다시 하트를 누르고 `하트 확인하기` 버튼을 눌러줘."
+    )
     .setColor("#ff4f8b")
     .setTimestamp();
 
   if (checkResult.reason === "not_configured") {
-    embed.setDescription("프리미엄 하트 확인 설정이 아직 안 됐어. 환경변수에 `KOREANBOTS_TOKEN`과 `KOREANBOTS_BOT_ID`를 넣어줘.");
+    embed.setDescription("프리미엄 하트 확인 설정이 아직 안 됐어요. 환경변수에 `KOREANBOTS_TOKEN`과 `KOREANBOTS_BOT_ID`를 넣어줘.");
   } else if (checkResult.reason === "api_error") {
-    embed.addFields({ name: "확인 상태", value: "한디리 API 확인이 잠깐 실패했어. 잠시 뒤 다시 확인해줘." });
+    embed.addFields({ name: "확인 상태", value: "한디리 API 확인이 잠깐 실패했어요. 잠시 뒤 다시 하트 확인 버튼을 눌러줘." });
+  } else if (checkResult.reason === "not_voted") {
+    embed.addFields({ name: "확인 상태", value: "아직 하트가 확인되지 않았어요. 하트를 누른 뒤 다시 확인해줘." });
   } else if (checkResult.expiresAt) {
-    embed.addFields({ name: "인증 만료", value: `<t:${Math.floor(new Date(checkResult.expiresAt).getTime() / 1000)}:R>` });
+    embed.addFields({ name: "패스 만료", value: `<t:${Math.floor(new Date(checkResult.expiresAt).getTime() / 1000)}:R>` });
   }
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setLabel("❤️ 한디리 하트 누르기").setStyle(ButtonStyle.Link).setURL(pageUrl),
-    new ButtonBuilder().setCustomId(`PremiumHeartCheck_${userId}`).setLabel("✅ 하트 확인하기").setStyle(ButtonStyle.Success)
+    new ButtonBuilder().setLabel("프리미엄 하트 누르기").setStyle(ButtonStyle.Link).setURL(pageUrl),
+    new ButtonBuilder().setCustomId(`PremiumHeartCheck_${userId}`).setLabel("하트 확인하기").setStyle(ButtonStyle.Success)
   );
 
   return { embeds: [embed], components: [row], ephemeral: true };
