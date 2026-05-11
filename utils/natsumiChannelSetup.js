@@ -46,7 +46,7 @@ const textChannels = [
     title: "이모지를 추가해보자!",
     description: [
       "여기서 누구나 새로운 이모지를 서버에 추가할 수 있어요.",
-      "여기에 추가한 이미지는 Discord 공식 이모지보다 훨씬 고화질로 등록될 수 있게 최대한 정리해볼게요.",
+      "업로드된 이미지는 128x128 정사각형 PNG로 정리해서 등록해볼게요.",
       "",
       "사용법:",
       "• 사진을 첨부하고 메시지에는 이모지 이름을 적어주세요. 필수예요.",
@@ -71,7 +71,7 @@ const textChannels = [
     title: "익명으로 대화해 보세요! 🤫",
     description: [
       "여기에 대화하면 익명 닉네임으로 대화할 수 있어요.",
-      "익명 정보는 무작위로 정해지고, 카미봇이 처리하는 정보 안내를 확인한 뒤 이용해 주세요.",
+      "원본 메시지는 지워지고 나츠미가 익명 메시지로 다시 보내줘요.",
     ].join("\n"),
   },
   {
@@ -123,11 +123,10 @@ export const createNatsumiChannels = async (guild, userId = null) => {
         PermissionFlagsBits.ViewChannel,
         PermissionFlagsBits.SendMessages,
         PermissionFlagsBits.ManageChannels,
+        PermissionFlagsBits.ManageMessages,
         PermissionFlagsBits.ReadMessageHistory,
         PermissionFlagsBits.EmbedLinks,
         PermissionFlagsBits.AttachFiles,
-        PermissionFlagsBits.ManageMessages,
-        PermissionFlagsBits.ManageExpressions,
       ],
     });
   }
