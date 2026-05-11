@@ -1,4 +1,4 @@
-import { AttachmentBuilder, EmbedBuilder, Events, PermissionFlagsBits } from "discord.js";
+import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Events, PermissionFlagsBits } from "discord.js";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { GoogleGenAI, Modality } from "@google/genai";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
@@ -42,6 +42,22 @@ const getFirstImage = (message) => {
     const name = file.name || "";
     return type.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(name);
   });
+};
+
+const getChannelFeatureKey = (channel, setup) => {
+  const channels = setup?.featureChannels || {};
+  for (const [key, id] of Object.entries(channels)) {
+    if (id && id === channel.id) return key;
+  }
+
+  const name = String(channel.name || "").replace(/\s+/g, "").toLowerCase();
+
+  if (name.includes("이모지") || name.includes("emoji") || name.includes("정제소")) return "emoji";
+  if (name.includes("비밀") || name.includes("secret") || name.includes("속삭임")) return "secret";
+  if (name.includes("익명") || name.includes("anonymous") || name.includes("가면")) return "anonymous";
+  if (name.includes("그림") || name.includes("image") || name.includes("공방")) return "aiImage";
+  if (name.includes("ai채팅") || name.includes("나츠미-대화") || name.includes("대화방")) return "aiChat";
+  return null;
 };
 
 const sanitizeEmojiName = (value) => {
@@ -166,7 +182,7 @@ const handleEmojiChannel = async (message) => {
   } catch (error) {
     console.error("[NatsumiEmoji] failed:", error);
     await message.reply({
-      content: "이모지 등록에 실패했어. 이미지 크기, 서버 이모지 슬롯, 내 권한을 확인해줘 😭",
+      content: "이모지 등록에 실패했어. GIF는 첫 프레임만 처리될 수 있어. 이미지 크기, 서버 이모지 슬롯, 내 권한을 확인해줘 😭",
       allowedMentions: { repliedUser: false },
     }).catch(() => {});
   }
@@ -175,13 +191,49 @@ const handleEmojiChannel = async (message) => {
 };
 
 const handleSecretChannel = async (message) => {
+  const deleteMs = Number(process.env.NATSUMI_SECRET_DELETE_MS || 15_000);
+  const notice = await message.reply({
+    content: `🌙 이 메시지는 ${Math.round(deleteMs / 1000)}초 뒤 사라져. 비밀은 오래 남기면 안 되거든 😤`,
+    allowedMentions: { repliedUser: false },
+  }).catch(() => null);
+
   setTimeout(() => {
     message.delete().catch(() => {});
-  }, Number(process.env.NATSUMI_SECRET_DELETE_MS || 15_000));
-  return false;
+    notice?.delete?.().catch(() => {});
+  }, deleteMs);
+  return true;
 };
 
-const anonymousNames = ["익명의 여우", "수상한 그림자", "조용한 손님", "비밀의 목소리", "가면 쓴 유저"];
+const anonymousNames = ["유동 여우", "가면 쓴 손님", "달빛 그림자", "익명 꼬리", "무명 손님", "비밀 목소리"];
+const randomAnonId = () => Math.floor(1000 + Math.random() * 9000);
+const randomAnonName = () => `${anonymousNames[Math.floor(Math.random() * anonymousNames.length)]}#${randomAnonId()}`;
+
+const buildAnonButtons = () => [
+  new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("NatsumiAnon_open")
+      .setLabel("새 메시지 작성")
+      .setEmoji("🎭")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("NatsumiAnon_shuffle")
+      .setLabel("유동 ID 초기화")
+      .setEmoji("🌀")
+      .setStyle(ButtonStyle.Secondary)
+  ),
+];
+
+const sendAnonymousMessage = async (channel, content, imageUrl = null) => {
+  const embed = new EmbedBuilder()
+    .setColor("#ff7aa8")
+    .setAuthor({ name: randomAnonName() })
+    .setDescription(content || "첨부 이미지")
+    .setFooter({ text: "나츠미 익명 가면방 · 실제 IP가 아닌 유동 익명 ID입니다" })
+    .setTimestamp();
+
+  if (imageUrl) embed.setImage(imageUrl);
+  return channel.send({ embeds: [embed], components: buildAnonButtons() }).catch(() => null);
+};
 
 const handleAnonymousChannel = async (message) => {
   const content = message.content?.trim();
@@ -189,18 +241,8 @@ const handleAnonymousChannel = async (message) => {
 
   if (!content && !image) return false;
 
-  const name = anonymousNames[Math.floor(Math.random() * anonymousNames.length)];
-  const embed = new EmbedBuilder()
-    .setColor("#ff7aa8")
-    .setAuthor({ name })
-    .setDescription(content || "첨부 이미지")
-    .setFooter({ text: "나츠미 익명 채팅" })
-    .setTimestamp();
-
-  if (image) embed.setImage(image.url);
-
   await message.delete().catch(() => {});
-  await message.channel.send({ embeds: [embed] }).catch(() => {});
+  await sendAnonymousMessage(message.channel, content, image?.url || null);
   return true;
 };
 
@@ -228,6 +270,11 @@ const handleAiImageChannel = async (message) => {
   if (!prompt && !image) return false;
   await message.channel.sendTyping().catch(() => {});
 
+  const waitMessage = await message.reply({
+    content: "🎨 그림 요청을 받았어. 나노 바나나한테 슬쩍 부탁해볼게... 잠깐만 기다려 😤",
+    allowedMentions: { repliedUser: false },
+  }).catch(() => null);
+
   try {
     const nanoResult = await createNanoBananaImage({ prompt, image });
 
@@ -239,7 +286,9 @@ const handleAiImageChannel = async (message) => {
         .setImage(`attachment://${nanoResult.attachment.name}`)
         .setTimestamp();
 
-      await message.reply({ embeds: [embed], files: [nanoResult.attachment], allowedMentions: { repliedUser: false } }).catch(() => {});
+      await waitMessage?.edit({ content: "", embeds: [embed], files: [nanoResult.attachment] }).catch(async () => {
+        await message.reply({ embeds: [embed], files: [nanoResult.attachment], allowedMentions: { repliedUser: false } }).catch(() => {});
+      });
       return true;
     }
 
@@ -257,24 +306,20 @@ const handleAiImageChannel = async (message) => {
         .setDescription(prompt || "첨부 이미지를 기반으로 생성했어.")
         .setImage(fallback.imageUrl)
         .setTimestamp();
-      await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } }).catch(() => {});
+      await waitMessage?.edit({ content: "", embeds: [embed] }).catch(() => {});
       return true;
     }
 
-    await message.reply({
+    await waitMessage?.edit({
       content: [
         "🎨 그림 요청은 받았어!",
         "구글 나노 바나나를 쓰려면 `NATSUMI_IMAGE_API_KEY` 또는 `GEMINI_API_KEY`가 필요해.",
         "모델 기본값은 `gemini-2.5-flash-image-preview`로 잡아놨어.",
       ].join("\n"),
-      allowedMentions: { repliedUser: false },
     }).catch(() => {});
   } catch (error) {
     console.error("[NatsumiImage] failed:", error);
-    await message.reply({
-      content: "그림 생성 요청 중 오류가 났어. API 키, 모델명, 이미지 안전 필터를 확인해줘 😭",
-      allowedMentions: { repliedUser: false },
-    }).catch(() => {});
+    await waitMessage?.edit({ content: "그림 생성 요청 중 오류가 났어. API 키, 모델명, 이미지 안전 필터를 확인해줘 😭" }).catch(() => {});
   }
 
   return true;
@@ -286,15 +331,15 @@ export default {
     if (!message.guild || message.author.bot) return;
 
     const setup = await NatsumiGuildSetup.findOne({ guildId: message.guild.id }).lean().catch(() => null);
-    const channels = setup?.featureChannels || {};
-    if (!channels || Object.keys(channels).length === 0) return;
+    const featureKey = getChannelFeatureKey(message.channel, setup);
+    if (!featureKey) return;
 
     let handled = false;
 
-    if (message.channel.id === channels.emoji) handled = await handleEmojiChannel(message);
-    else if (message.channel.id === channels.secret) handled = await handleSecretChannel(message);
-    else if (message.channel.id === channels.anonymous) handled = await handleAnonymousChannel(message);
-    else if (message.channel.id === channels.aiImage) handled = await handleAiImageChannel(message);
+    if (featureKey === "emoji") handled = await handleEmojiChannel(message);
+    else if (featureKey === "secret") handled = await handleSecretChannel(message);
+    else if (featureKey === "anonymous") handled = await handleAnonymousChannel(message);
+    else if (featureKey === "aiImage") handled = await handleAiImageChannel(message);
 
     if (handled) await markProcessed(message);
   },
