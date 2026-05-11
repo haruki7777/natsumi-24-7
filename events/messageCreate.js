@@ -8,6 +8,7 @@ import { addXP } from "./levels.js";
 import { generateDistributedContent, getEmotion } from "../utils/ai.js";
 
 const CALLWORDS = ["나츠미", "나쯔미", "낫쯔미", "츠미짱", "츠미야", "나츠", "나츠짱", "츠미"];
+const TEMP_NOTICE_DELETE_MS = Number(process.env.NATSUMI_TEMP_NOTICE_DELETE_MS || 8000);
 
 let bannedWordsCache = null;
 let learnedDataCache = null;
@@ -63,6 +64,14 @@ const markProcessed = async (message) => {
     ).catch(() => {});
 };
 
+const sendTemporaryReply = async (message, content, ms = TEMP_NOTICE_DELETE_MS) => {
+    const reply = await message.reply({ content, allowedMentions: { repliedUser: true } }).catch(() => null);
+    if (reply && ms > 0) {
+        setTimeout(() => reply.delete().catch(() => {}), ms);
+    }
+    return reply;
+};
+
 const hasManageGuild = (member) => {
     return Boolean(
         member?.permissions?.has(PermissionFlagsBits.ManageGuild) ||
@@ -85,12 +94,12 @@ const findTargetChannel = (message, setup, raw) => {
 
     const feature = setup?.featureChannels || {};
     const candidates = [
-        ["aiChat", ["ai채팅", "aichat", "에이아이채팅", "인공지능채팅"]],
-        ["aiImage", ["ai그림", "그림", "이미지", "그림채널"]],
-        ["emoji", ["이모지", "이모지추가", "이모지채널"]],
-        ["secret", ["비밀", "비밀채팅"]],
-        ["anonymous", ["익명", "익명채팅"]],
-        ["chat", ["잡담", "일반", "채팅"]],
+        ["aiChat", ["ai채팅", "aichat", "에이아이채팅", "인공지능채팅", "나츠미대화", "대화방"]],
+        ["aiImage", ["ai그림", "그림", "이미지", "그림채널", "그림공방"]],
+        ["emoji", ["이모지", "이모지추가", "이모지채널", "정제소"]],
+        ["secret", ["비밀", "비밀채팅", "속삭임"]],
+        ["anonymous", ["익명", "익명채팅", "가면방"]],
+        ["chat", ["잡담", "일반", "채팅", "여우찻집"]],
     ];
 
     for (const [key, names] of candidates) {
@@ -113,10 +122,7 @@ const handleNatsumiAdminMode = async (message, setup) => {
     if (isGlobalChat) {
         if (!hasManageGuild(message.member)) {
             await markProcessed(message);
-            await message.reply({
-                content: "관리자 권한이 있어야 설정을 바꿀 수 있어. 아무나 만지면 곤란하거든 😤",
-                allowedMentions: { repliedUser: false },
-            }).catch(() => {});
+            await sendTemporaryReply(message, "관리자 권한이 있어야 설정을 바꿀 수 있어. 아무나 만지면 곤란하거든 😤");
             return true;
         }
 
@@ -131,19 +137,17 @@ const handleNatsumiAdminMode = async (message, setup) => {
         );
 
         await markProcessed(message);
-        await message.reply({
-            content: enable
-                ? "✅ 일반 채널에서도 나츠미 호출어를 사용할 수 있게 켰어. 그래도 너무 막 부르진 마 😤"
-                : "✅ 일반 채널 호출어를 껐어. 이제 AI채팅 채널에서만 부를 수 있어 😼",
-            allowedMentions: { repliedUser: false },
-        }).catch(() => {});
+        await sendTemporaryReply(message, enable
+            ? "✅ 일반 채널에서도 나츠미 호출어를 사용할 수 있게 켰어. 그래도 너무 막 부르진 마 😤"
+            : "✅ 일반 채널 호출어를 껐어. 이제 AI채팅 채널에서만 부를 수 있어 😼"
+        );
         return true;
     }
 
     if (raw.includes("슬로우모드") || raw.includes("슬로우")) {
         if (!hasManageChannels(message.member)) {
             await markProcessed(message);
-            await message.reply({ content: "채널 관리 권한이 있어야 슬로우모드를 바꿀 수 있어 😤", allowedMentions: { repliedUser: false } }).catch(() => {});
+            await sendTemporaryReply(message, "채널 관리 권한이 있어야 슬로우모드를 바꿀 수 있어 😤");
             return true;
         }
 
@@ -156,26 +160,23 @@ const handleNatsumiAdminMode = async (message, setup) => {
 
         if (!target?.isTextBased?.() || !target.setRateLimitPerUser) {
             await markProcessed(message);
-            await message.reply({ content: "슬로우모드를 바꿀 텍스트 채널을 못 찾았어. 채널을 멘션해서 다시 말해줘 😭", allowedMentions: { repliedUser: false } }).catch(() => {});
+            await sendTemporaryReply(message, "슬로우모드를 바꿀 텍스트 채널을 못 찾았어. 채널을 멘션해서 다시 말해줘 😭");
             return true;
         }
 
         await target.setRateLimitPerUser(safeSeconds, `Natsumi admin mode by ${message.author.tag}`).catch(async () => {
-            await message.reply({ content: "슬로우모드 변경에 실패했어. 내 권한을 확인해줘 😭", allowedMentions: { repliedUser: false } }).catch(() => {});
+            await sendTemporaryReply(message, "슬로우모드 변경에 실패했어. 내 권한을 확인해줘 😭");
         });
 
         await markProcessed(message);
-        await message.reply({
-            content: `✅ ${target} 슬로우모드를 ${safeSeconds}초로 바꿨어. 흥, 이 정도는 쉽거든 😤`,
-            allowedMentions: { repliedUser: false },
-        }).catch(() => {});
+        await sendTemporaryReply(message, `✅ ${target} 슬로우모드를 ${safeSeconds}초로 바꿨어. 흥, 이 정도는 쉽거든 😤`);
         return true;
     }
 
     if (raw.includes("채널잠금") || raw.includes("잠가") || raw.includes("잠금") || raw.includes("채널열기") || raw.includes("풀어")) {
         if (!hasManageChannels(message.member)) {
             await markProcessed(message);
-            await message.reply({ content: "채널 관리 권한이 있어야 잠금 설정을 바꿀 수 있어 😤", allowedMentions: { repliedUser: false } }).catch(() => {});
+            await sendTemporaryReply(message, "채널 관리 권한이 있어야 잠금 설정을 바꿀 수 있어 😤");
             return true;
         }
 
@@ -184,14 +185,11 @@ const handleNatsumiAdminMode = async (message, setup) => {
 
         const lock = raw.includes("잠가") || raw.includes("잠금") || raw.includes("채널잠금");
         await target.permissionOverwrites.edit(message.guild.roles.everyone.id, { SendMessages: !lock }).catch(async () => {
-            await message.reply({ content: "채널 잠금 변경에 실패했어. 내 권한을 확인해줘 😭", allowedMentions: { repliedUser: false } }).catch(() => {});
+            await sendTemporaryReply(message, "채널 잠금 변경에 실패했어. 내 권한을 확인해줘 😭");
         });
 
         await markProcessed(message);
-        await message.reply({
-            content: lock ? `🔒 ${target} 채널을 잠갔어.` : `🔓 ${target} 채널을 다시 열었어.`,
-            allowedMentions: { repliedUser: false },
-        }).catch(() => {});
+        await sendTemporaryReply(message, lock ? `🔒 ${target} 채널을 잠갔어.` : `🔓 ${target} 채널을 다시 열었어.`);
         return true;
     }
 
@@ -216,7 +214,7 @@ const replyAiBlocked = async (message, setup) => {
         ? `나츠미 호출은 ${aiMention} 에서만 가능해. 일반 채널에서도 쓰고 싶으면 \`/나츠미서버셋업 일반채팅 켜기\`를 사용해줘 😤`
         : "아직 AI채팅 채널이 설정되지 않았어. `/나츠미서버셋업 자동셋업`으로 먼저 만들어줘 😤";
 
-    return message.reply({ content: guide, allowedMentions: { repliedUser: false } }).catch(() => {});
+    return sendTemporaryReply(message, guide);
 };
 
 export default {
@@ -264,9 +262,7 @@ export default {
     if (!isMentioned && !isCalled && lowerContent !== "!핑" && lowerContent !== "!ping") return;
 
     if (isMentioned && content.length === 0) {
-        return message.reply({
-            content: "츤! 멘션만 덜렁 보내면 어쩌라는 거야? 내가 네 속마음이라도 꿰뚫어 볼 수 있는 여우인 줄 알아? ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ\n\n> **도움말:** 나츠미가 단어(츠미야 등)만으로 응답하게 하려면 Discord Developer Portal에서 **Message Content Intent**를 활성화해야 한다구!",
-        }).catch(() => {});
+        return sendTemporaryReply(message, "츤! 멘션만 덜렁 보내면 어쩌라는 거야? AI채팅 채널에서 제대로 불러줘 😤");
     }
 
     try {
