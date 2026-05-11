@@ -8,6 +8,7 @@ const natsumiGuildSetupSchema = new mongoose.Schema(
     aiChannelIds: { type: [String], default: [] },
     textChannelIds: { type: [String], default: [] },
     voiceChannelIds: { type: [String], default: [] },
+    aiGlobalEnabled: { type: Boolean, default: false },
     setupBy: { type: String, default: null },
     setupAt: { type: Date, default: Date.now },
   },
