@@ -70,39 +70,153 @@ const hasManageGuild = (member) => {
     );
 };
 
-const handleNatsumiAdminMode = async (message) => {
-    const raw = (message.content || "").replace(/\s+/g, "");
-    const isAdminMode = raw.includes("관리자모드") || raw.includes("관리자모드로");
-    const isGlobalChat = raw.includes("일반채팅") || raw.includes("일반채널");
-    if (!isAdminMode || !isGlobalChat) return false;
+const hasManageChannels = (member) => {
+    return Boolean(
+        member?.permissions?.has(PermissionFlagsBits.ManageChannels) ||
+        member?.permissions?.has(PermissionFlagsBits.Administrator)
+    );
+};
 
-    if (!hasManageGuild(message.member)) {
+const compact = (value) => String(value || "").replace(/\s+/g, "");
+
+const findTargetChannel = (message, setup, raw) => {
+    const mentioned = message.mentions.channels.first();
+    if (mentioned) return mentioned;
+
+    const feature = setup?.featureChannels || {};
+    const candidates = [
+        ["aiChat", ["ai채팅", "aichat", "에이아이채팅", "인공지능채팅"]],
+        ["aiImage", ["ai그림", "그림", "이미지", "그림채널"]],
+        ["emoji", ["이모지", "이모지추가", "이모지채널"]],
+        ["secret", ["비밀", "비밀채팅"]],
+        ["anonymous", ["익명", "익명채팅"]],
+        ["chat", ["잡담", "일반", "채팅"]],
+    ];
+
+    for (const [key, names] of candidates) {
+        const id = feature[key];
+        if (!id) continue;
+        if (names.some((name) => raw.includes(name))) {
+            return message.guild.channels.cache.get(id) || null;
+        }
+    }
+
+    return message.channel;
+};
+
+const handleNatsumiAdminMode = async (message, setup) => {
+    const raw = compact(message.content);
+    const isAdminMode = raw.includes("관리자모드") || raw.includes("관리자모드로");
+    if (!isAdminMode) return false;
+
+    const isGlobalChat = raw.includes("일반채팅") || raw.includes("일반채널");
+    if (isGlobalChat) {
+        if (!hasManageGuild(message.member)) {
+            await markProcessed(message);
+            await message.reply({
+                content: "관리자 권한이 있어야 설정을 바꿀 수 있어. 아무나 만지면 곤란하거든 😤",
+                allowedMentions: { repliedUser: false },
+            }).catch(() => {});
+            return true;
+        }
+
+        const enable = raw.includes("켜") || raw.includes("활성화") || raw.includes("사용");
+        const disable = raw.includes("꺼") || raw.includes("비활성화") || raw.includes("막아") || raw.includes("차단");
+        if (!enable && !disable) return false;
+
+        await NatsumiGuildSetup.findOneAndUpdate(
+            { guildId: message.guild.id },
+            { guildId: message.guild.id, aiGlobalEnabled: enable },
+            { upsert: true, new: true }
+        );
+
         await markProcessed(message);
         await message.reply({
-            content: "관리자 권한이 있어야 설정을 바꿀 수 있어. 아무나 만지면 곤란하거든 😤",
+            content: enable
+                ? "✅ 일반 채널에서도 나츠미 호출어를 사용할 수 있게 켰어. 그래도 너무 막 부르진 마 😤"
+                : "✅ 일반 채널 호출어를 껐어. 이제 AI채팅 채널에서만 부를 수 있어 😼",
             allowedMentions: { repliedUser: false },
         }).catch(() => {});
         return true;
     }
 
-    const enable = raw.includes("켜") || raw.includes("활성화") || raw.includes("사용");
-    const disable = raw.includes("꺼") || raw.includes("비활성화") || raw.includes("막아") || raw.includes("차단");
-    if (!enable && !disable) return false;
+    if (raw.includes("슬로우모드") || raw.includes("슬로우")) {
+        if (!hasManageChannels(message.member)) {
+            await markProcessed(message);
+            await message.reply({ content: "채널 관리 권한이 있어야 슬로우모드를 바꿀 수 있어 😤", allowedMentions: { repliedUser: false } }).catch(() => {});
+            return true;
+        }
 
-    await NatsumiGuildSetup.findOneAndUpdate(
-        { guildId: message.guild.id },
-        { guildId: message.guild.id, aiGlobalEnabled: enable },
-        { upsert: true, new: true }
-    );
+        const match = raw.match(/(\d{1,4})(초|s|분|m)?/i);
+        const amount = match ? Number(match[1]) : 0;
+        const unit = match?.[2] || "초";
+        const seconds = unit === "분" || unit.toLowerCase() === "m" ? amount * 60 : amount;
+        const safeSeconds = Math.max(0, Math.min(seconds, 21600));
+        const target = findTargetChannel(message, setup, raw);
 
+        if (!target?.isTextBased?.() || !target.setRateLimitPerUser) {
+            await markProcessed(message);
+            await message.reply({ content: "슬로우모드를 바꿀 텍스트 채널을 못 찾았어. 채널을 멘션해서 다시 말해줘 😭", allowedMentions: { repliedUser: false } }).catch(() => {});
+            return true;
+        }
+
+        await target.setRateLimitPerUser(safeSeconds, `Natsumi admin mode by ${message.author.tag}`).catch(async () => {
+            await message.reply({ content: "슬로우모드 변경에 실패했어. 내 권한을 확인해줘 😭", allowedMentions: { repliedUser: false } }).catch(() => {});
+        });
+
+        await markProcessed(message);
+        await message.reply({
+            content: `✅ ${target} 슬로우모드를 ${safeSeconds}초로 바꿨어. 흥, 이 정도는 쉽거든 😤`,
+            allowedMentions: { repliedUser: false },
+        }).catch(() => {});
+        return true;
+    }
+
+    if (raw.includes("채널잠금") || raw.includes("잠가") || raw.includes("잠금") || raw.includes("채널열기") || raw.includes("풀어")) {
+        if (!hasManageChannels(message.member)) {
+            await markProcessed(message);
+            await message.reply({ content: "채널 관리 권한이 있어야 잠금 설정을 바꿀 수 있어 😤", allowedMentions: { repliedUser: false } }).catch(() => {});
+            return true;
+        }
+
+        const target = findTargetChannel(message, setup, raw);
+        if (!target?.permissionOverwrites?.edit) return false;
+
+        const lock = raw.includes("잠가") || raw.includes("잠금") || raw.includes("채널잠금");
+        await target.permissionOverwrites.edit(message.guild.roles.everyone.id, { SendMessages: !lock }).catch(async () => {
+            await message.reply({ content: "채널 잠금 변경에 실패했어. 내 권한을 확인해줘 😭", allowedMentions: { repliedUser: false } }).catch(() => {});
+        });
+
+        await markProcessed(message);
+        await message.reply({
+            content: lock ? `🔒 ${target} 채널을 잠갔어.` : `🔓 ${target} 채널을 다시 열었어.`,
+            allowedMentions: { repliedUser: false },
+        }).catch(() => {});
+        return true;
+    }
+
+    return false;
+};
+
+const shouldBlockAiCall = (message, setup, isCalled) => {
+    if (!message.guild || !isCalled) return false;
+    if (!setup) return true;
+
+    const aiChannels = setup.aiChannelIds || [];
+    if (setup.aiGlobalEnabled === true) return false;
+    if (aiChannels.length === 0) return true;
+    return !aiChannels.includes(message.channel.id);
+};
+
+const replyAiBlocked = async (message, setup) => {
     await markProcessed(message);
-    await message.reply({
-        content: enable
-            ? "✅ 일반 채널에서도 나츠미 호출어를 사용할 수 있게 켰어. 그래도 너무 막 부르진 마 😤"
-            : "✅ 일반 채널 호출어를 껐어. 이제 AI채팅 채널에서만 부를 수 있어 😼",
-        allowedMentions: { repliedUser: false },
-    }).catch(() => {});
-    return true;
+    const aiChannels = setup?.aiChannelIds || [];
+    const aiMention = aiChannels.length ? aiChannels.map((id) => `<#${id}>`).join(", ") : "아직 미설정";
+    const guide = aiChannels.length
+        ? `나츠미 호출은 ${aiMention} 에서만 가능해. 일반 채널에서도 쓰고 싶으면 \`/나츠미서버셋업 일반채팅 켜기\`를 사용해줘 😤`
+        : "아직 AI채팅 채널이 설정되지 않았어. `/나츠미서버셋업 자동셋업`으로 먼저 만들어줘 😤";
+
+    return message.reply({ content: guide, allowedMentions: { repliedUser: false } }).catch(() => {});
 };
 
 export default {
@@ -120,24 +234,15 @@ export default {
 
     if (message.guild && natsumiSetup) {
         const featureOnlyChannels = getFeatureOnlyChannelIds(natsumiSetup);
-        if (featureOnlyChannels.includes(message.channel.id)) {
-            return;
-        }
+        if (featureOnlyChannels.includes(message.channel.id)) return;
+    }
 
-        if (isCalled) {
-            const adminHandled = await handleNatsumiAdminMode(message);
-            if (adminHandled) return;
+    if (message.guild && isCalled) {
+        const adminHandled = await handleNatsumiAdminMode(message, natsumiSetup);
+        if (adminHandled) return;
 
-            const aiChannels = natsumiSetup.aiChannelIds || [];
-            const aiGlobalEnabled = natsumiSetup.aiGlobalEnabled === true;
-            if (aiChannels.length > 0 && !aiGlobalEnabled && !aiChannels.includes(message.channel.id)) {
-                await markProcessed(message);
-                const aiMention = aiChannels.map((id) => `<#${id}>`).join(", ");
-                return message.reply({
-                    content: `나츠미 호출은 ${aiMention} 에서만 가능해. 일반 채널에서도 쓰고 싶으면 \`/나츠미 일반채팅 켜기\`를 사용해줘 😤`,
-                    allowedMentions: { repliedUser: false },
-                }).catch(() => {});
-            }
+        if (shouldBlockAiCall(message, natsumiSetup, isCalled)) {
+            return replyAiBlocked(message, natsumiSetup);
         }
     }
 
