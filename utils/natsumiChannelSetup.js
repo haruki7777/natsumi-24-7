@@ -1,95 +1,124 @@
-import { ChannelType, EmbedBuilder, PermissionFlagsBits } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  EmbedBuilder,
+  PermissionFlagsBits,
+} from "discord.js";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
 
 const textChannels = [
   {
     key: "aiChat",
-    name: "🤖｜AI채팅",
-    topic: "나츠미 호출어로 AI 대화를 나누는 채널이야. 일반 채널에서는 호출어가 기본으로 막혀 😤",
-    title: "카미봇 AI 채팅 채널",
+    name: "🦊｜나츠미-대화방",
+    topic: "나츠미 호출어로만 AI 대화가 동작하는 전용 채널이야. 일반 채널은 기본적으로 막혀 😤",
+    title: "🦊 나츠미 AI 대화방",
     description: [
-      "이곳에서 AI 나츠미와 채팅으로 대화하실 수 있어요!",
+      "여기서는 `나츠미`, `츠미야`, `나츠` 같은 호출어로 나츠미와 대화할 수 있어.",
+      "일반 채널에서는 호출어가 기본적으로 막혀 있으니까, 아무 데서나 부르지 말라구 😤",
       "",
-      "봇에게 답장해서 이전 내용의 질문을 이어가고, 점(.)으로 시작하는 메시지로 답장하지 않게 하면 돼요.",
-      "봇이 말한 메시지에서 `답장`을 누르면 이전 대화를 기억해요.",
+      "사용 예시",
+      "`나츠미 오늘 서버 상태 어때?`",
+      "`츠미야 잡담 채널 슬로우모드 5초로 바꿔줘`",
+      "`나츠미 귀여운 여우귀 소녀 그림 프롬프트 만들어줘`",
       "",
-      "예시:",
-      "`나츠미 바닷가에서 커피 마시는 소녀 그림 설명해줘`",
-      "`나츠미 이번 주 서버에서 무슨 일이 많았어?`",
-      "`나츠미 잡담 채널 슬로우모드 5초로 바꿔줘`",
+      "관리자 전용 예시",
+      "`나츠미 관리자모드 일반채팅 켜줘`",
+      "`나츠미 관리자모드 잡담 슬로우모드 5초로 바꿔줘`",
     ].join("\n"),
   },
   {
     key: "aiImage",
-    name: "🎨｜AI그림",
-    topic: "AI 그림 기능 안내 채널이야. 사진 변환, 프롬프트, 이미지 생성 안내에 사용해.",
-    title: "카미봇으로 그림 만들기",
+    name: "🎨｜나츠미-그림공방",
+    topic: "나노 바나나 기반 AI 그림 생성 채널이야. 프롬프트나 이미지를 올려봐.",
+    title: "🎨 나츠미 그림공방",
     description: [
-      "세 가지 방법으로 그림을 만들 수 있어요!",
+      "여기는 그림을 만드는 전용 채널이야.",
+      "프롬프트만 적어도 되고, 이미지를 같이 올려서 변환 요청을 해도 돼.",
       "",
-      "1. 사진을 올리고 AI로 변환하기",
-      "이 채널에 사진을 올리고 원하는 스타일을 적어보세요.",
+      "사용 예시",
+      "`여우귀 여고생이 밤하늘 아래에서 웃는 애니풍 일러스트`",
+      "`이 사진을 귀여운 나츠미풍 프로필 이미지로 바꿔줘`",
       "",
-      "2. AI채팅의 카미봇에게 그려달라고 하기",
-      "예: `나츠미 귀여운 러스크가 바닷가에서 웃는 그림 그려줘`",
-      "",
-      "3. 전문가용 프롬프트 사용",
-      "예: `/sd 키: 1girl 키: long hair` 처럼 키워드 기반으로 사용할 수 있어요.",
-      "",
-      "고급 기능: 키, 이미지 개수, 시드, 스텝, 해상도 등을 설정할 수 있어요.",
+      "구글 나노 바나나 계열 이미지 모델을 먼저 사용하고, 실패하면 fallback API를 사용해.",
     ].join("\n"),
   },
   {
     key: "emoji",
-    name: "😀｜이모지-추가하기",
-    topic: "이미지를 올리면 서버 이모지로 등록하는 채널이야.",
-    title: "이모지를 추가해보자!",
+    name: "🪄｜이모지-정제소",
+    topic: "이미지를 올리면 나츠미가 128x128 PNG로 정리해서 서버 이모지로 등록해줘.",
+    title: "🪄 나츠미 이모지 정제소",
     description: [
-      "여기서 누구나 새로운 이모지를 서버에 추가할 수 있어요.",
-      "업로드된 이미지는 128x128 정사각형 PNG로 정리해서 등록해볼게요.",
+      "사진을 올리고 메시지에는 이모지 이름을 적어줘.",
+      "나츠미가 이미지를 128x128 정사각형 PNG로 정리해서 서버 이모지로 등록해볼게.",
       "",
-      "사용법:",
-      "• 사진을 첨부하고 메시지에는 이모지 이름을 적어주세요. 필수예요.",
-      "• 사진과 메시지를 한 번에 보내주세요.",
-      "• 이모지 이름은 영어, 숫자, 밑줄만 사용할 수 있어요.",
+      "사용법",
+      "1. 이미지 첨부",
+      "2. 메시지에 이모지 이름 입력",
+      "3. 전송",
+      "",
+      "이모지 이름은 영어, 숫자, 밑줄만 안전하게 사용할 수 있어.",
+      "봇에게 `이모지 및 스티커 관리` 권한이 필요해 😤",
     ].join("\n"),
   },
   {
     key: "secret",
-    name: "🤫｜비밀채팅",
-    topic: "15초 뒤 메시지를 지우는 비밀 대화 채널이야.",
-    title: "비밀 채팅에 오신 걸 환영합니다!",
+    name: "🌙｜비밀-속삭임",
+    topic: "메시지가 잠시 뒤 사라지는 비밀 채팅 채널이야.",
+    title: "🌙 나츠미 비밀 속삭임",
     description: [
-      "여기에 말하는 내용은 15초 뒤에 전부 사라져요.",
-      "채널 알림을 켜 두시면 비밀 대화에 참여하실 수 있을지도...! 😅",
+      "여기에 적은 메시지는 일정 시간이 지나면 사라져.",
+      "기본값은 15초야. 너무 오래 남기면 비밀이 아니잖아, 바보야 😤",
+      "",
+      "주의: 완전한 보안 채널은 아니니까 민감한 개인정보는 올리지 마.",
     ].join("\n"),
   },
   {
     key: "anonymous",
-    name: "🤫｜익명채팅",
-    topic: "익명 닉네임으로 대화하는 채널이야.",
-    title: "익명으로 대화해 보세요! 🤫",
+    name: "🎭｜익명-가면방",
+    topic: "버튼이나 일반 메시지로 익명 메시지를 보낼 수 있는 채널이야.",
+    title: "🎭 나츠미 익명 가면방",
     description: [
-      "여기에 대화하면 익명 닉네임으로 대화할 수 있어요.",
-      "원본 메시지는 지워지고 나츠미가 익명 메시지로 다시 보내줘요.",
+      "여기서는 익명으로 메시지를 보낼 수 있어.",
+      "아래 버튼을 누르면 모달로 익명 메시지를 작성할 수 있고, 일반 메시지를 보내도 나츠미가 익명 임베드로 바꿔줘.",
+      "",
+      "원본 메시지는 가능한 경우 삭제하고, 익명 이름으로 다시 보내서 가면을 유지해줄게 😼",
+      "그래도 규칙 위반은 관리자에게 들킬 수 있으니까 착각하지 마.",
     ].join("\n"),
+    button: true,
   },
   {
     key: "chat",
-    name: "💬｜잡담",
-    topic: "자유롭게 이야기하는 채널이야.",
-    title: "잡담 채널",
+    name: "🍵｜여우찻집",
+    topic: "서버 사람들이 자유롭게 이야기하는 일반 잡담 채널이야.",
+    title: "🍵 나츠미 여우찻집",
     description: [
-      "카미봇의 특별한 기능 채널은 아니지만, 서버 세팅상 하나 만들어 드렸어요.",
-      "자유롭게 이야기 나눠 보세요 😊",
+      "여기는 편하게 이야기하는 잡담 채널이야.",
+      "나츠미 호출어는 기본적으로 AI채팅 채널에서만 동작해.",
+      "일반 채널에서도 호출어를 쓰려면 `/나츠미서버셋업 일반채팅 켜기`를 사용해줘.",
     ].join("\n"),
   },
 ];
 
 const voiceChannels = [
-  { key: "tts", name: "📢｜TTS" },
-  { key: "tempVoice", name: "🔊｜새 음성 채널" },
+  { key: "tts", name: "📢｜여우-TTS" },
+  { key: "tempVoice", name: "🔊｜새-음성방" },
 ];
+
+const buildGuideComponents = (item) => {
+  if (item.key !== "anonymous") return [];
+
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("NatsumiAnon_open")
+        .setLabel("익명 메시지 쓰기")
+        .setEmoji("🎭")
+        .setStyle(ButtonStyle.Primary)
+    ),
+  ];
+};
 
 const sendGuide = async (channel, item) => {
   const embed = new EmbedBuilder()
@@ -98,7 +127,11 @@ const sendGuide = async (channel, item) => {
     .setDescription(item.description)
     .setTimestamp();
 
-  const message = await channel.send({ embeds: [embed] }).catch(() => null);
+  const message = await channel.send({
+    embeds: [embed],
+    components: buildGuideComponents(item),
+  }).catch(() => null);
+
   if (message) await message.pin().catch(() => {});
 };
 
@@ -132,14 +165,14 @@ export const createNatsumiChannels = async (guild, userId = null) => {
   }
 
   const featureCategory = await guild.channels.create({
-    name: "카미봇 기능 채널",
+    name: "🦊 나츠미 기능 여우굴",
     type: ChannelType.GuildCategory,
     permissionOverwrites: baseOverwrites,
     reason: "나츠미 자동 채널 구성",
   });
 
   const voiceCategory = await guild.channels.create({
-    name: "카미봇 음성 채널",
+    name: "🎙️ 나츠미 음성 여우굴",
     type: ChannelType.GuildCategory,
     permissionOverwrites: baseOverwrites,
     reason: "나츠미 자동 음성 채널 구성",
@@ -198,14 +231,14 @@ export const createNatsumiChannels = async (guild, userId = null) => {
 export const buildNatsumiSetupEmbed = () => {
   return new EmbedBuilder()
     .setColor("#ff7aa8")
-    .setTitle("🦊 나츠미 채널 자동 구성")
+    .setTitle("🦊 나츠미 서버 자동셋업")
     .setDescription([
-      "반가워요! 저는 나츠미예요.",
-      "`/도움말` 명령어에 자세한 설명이 있어요.",
-      "`/나츠미 자동셋업`을 쓰면 카미봇처럼 예쁜 채널 구성을 자동으로 만들어줄게요.",
+      "`/나츠미서버셋업 자동셋업`을 쓰면 나츠미 전용 채널 구성을 자동으로 만들어줄게.",
       "",
       "생성되는 채널:",
-      "🤖 AI채팅 · 🎨 AI그림 · 😀 이모지 · 🤫 비밀채팅 · 🤐 익명채팅 · 💬 잡담 · 📢 TTS",
+      "🦊 AI대화방 · 🎨 그림공방 · 🪄 이모지 정제소 · 🌙 비밀 속삭임 · 🎭 익명 가면방 · 🍵 여우찻집 · 📢 TTS",
+      "",
+      "AI 호출어는 기본적으로 AI대화방에서만 동작해. 일반 채널에서도 쓰려면 설정을 켜야 해 😤",
     ].join("\n"))
     .setFooter({ text: "나츠미가 알아서 척척 정리해줄게. 흥, 특별히야!" })
     .setTimestamp();
