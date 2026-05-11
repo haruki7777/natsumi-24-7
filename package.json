@@ -8,6 +8,7 @@
     "start": "tsx server.ts",
     "start:bot": "tsx bot.ts",
     "start:lite": "tsx bot.ts",
+    "start:vortexa": "node scripts/vortexa-start.mjs",
     "dev": "tsx server.ts",
     "lint": "eslint .",
     "build": "vite build"
