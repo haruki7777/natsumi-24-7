@@ -1,7 +1,32 @@
 import { AttachmentBuilder, EmbedBuilder, Events, PermissionFlagsBits } from "discord.js";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { GoogleGenAI, Modality } from "@google/genai";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
 import ProcessedMessage from "../models/ProcessedMessage.js";
+
+let googleImageClient = null;
+let googleImageKey = null;
+
+const cleanEnv = (value) => value?.replace?.(/[\"']/g, "").trim();
+
+const getGoogleImageKey = () => {
+  return cleanEnv(process.env.NATSUMI_IMAGE_API_KEY)
+    || cleanEnv(process.env.GOOGLE_API_KEY)
+    || cleanEnv(process.env.MY_GEMINI_API_KEY)
+    || cleanEnv(process.env.GEMINI_API_KEY);
+};
+
+const getGoogleImageClient = () => {
+  const key = getGoogleImageKey();
+  if (!key) return null;
+
+  if (!googleImageClient || googleImageKey !== key) {
+    googleImageClient = new GoogleGenAI({ apiKey: key });
+    googleImageKey = key;
+  }
+
+  return googleImageClient;
+};
 
 const markProcessed = async (message) => {
   await ProcessedMessage.findOneAndUpdate(
@@ -51,6 +76,55 @@ const buildEmojiBuffer = async (url) => {
 
   ctx.drawImage(image, x, y, width, height);
   return canvas.toBuffer("image/png");
+};
+
+const imageUrlToInlineData = async (image) => {
+  if (!image?.url) return null;
+
+  const response = await fetch(image.url);
+  if (!response.ok) throw new Error(`source image fetch failed ${response.status}`);
+
+  const arrayBuffer = await response.arrayBuffer();
+  const data = Buffer.from(arrayBuffer).toString("base64");
+  const mimeType = image.contentType || "image/png";
+  return { inlineData: { mimeType, data } };
+};
+
+const createNanoBananaImage = async ({ prompt, image }) => {
+  const ai = getGoogleImageClient();
+  if (!ai) return null;
+
+  const model = cleanEnv(process.env.NATSUMI_IMAGE_MODEL) || "gemini-2.5-flash-image-preview";
+  const finalPrompt = [
+    "너는 나츠미 봇의 이미지 생성 엔진이야.",
+    "요청을 귀엽고 선명한 애니풍 이미지로 만들어줘.",
+    "부적절하거나 안전하지 않은 요청은 안전한 방향으로 순화해줘.",
+    prompt || "귀여운 여우귀 소녀 캐릭터를 예쁘게 그려줘.",
+  ].join("\n");
+
+  const parts = [{ text: finalPrompt }];
+  const imagePart = await imageUrlToInlineData(image);
+  if (imagePart) parts.push(imagePart);
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: [{ role: "user", parts }],
+    config: {
+      responseModalities: [Modality.TEXT, Modality.IMAGE],
+    },
+  });
+
+  const responseParts = response?.candidates?.[0]?.content?.parts || response?.parts || [];
+  const text = responseParts.find((part) => part.text)?.text || "나츠미가 그림을 완성했어.";
+  const imageData = responseParts.find((part) => part.inlineData?.data)?.inlineData;
+
+  if (!imageData?.data) return { text, attachment: null };
+
+  const extension = imageData.mimeType?.includes("jpeg") ? "jpg" : "png";
+  const buffer = Buffer.from(imageData.data, "base64");
+  const attachment = new AttachmentBuilder(buffer, { name: `natsumi-image.${extension}` });
+
+  return { text, attachment };
 };
 
 const handleEmojiChannel = async (message) => {
@@ -130,8 +204,8 @@ const handleAnonymousChannel = async (message) => {
   return true;
 };
 
-const requestImageGeneration = async ({ prompt, imageUrl, userId, channelId }) => {
-  const endpoint = process.env.NATSUMI_IMAGE_API_URL?.replace?.(/[\"']/g, "").trim();
+const requestImageGenerationFallback = async ({ prompt, imageUrl, userId, channelId }) => {
+  const endpoint = cleanEnv(process.env.NATSUMI_IMAGE_API_URL);
   if (!endpoint) return null;
 
   const response = await fetch(endpoint, {
@@ -155,19 +229,33 @@ const handleAiImageChannel = async (message) => {
   await message.channel.sendTyping().catch(() => {});
 
   try {
-    const result = await requestImageGeneration({
+    const nanoResult = await createNanoBananaImage({ prompt, image });
+
+    if (nanoResult?.attachment) {
+      const embed = new EmbedBuilder()
+        .setColor("#ff7aa8")
+        .setTitle("🎨 나츠미 그림 생성 완료")
+        .setDescription(nanoResult.text?.slice(0, 1500) || prompt || "나노 바나나로 그림을 만들었어.")
+        .setImage(`attachment://${nanoResult.attachment.name}`)
+        .setTimestamp();
+
+      await message.reply({ embeds: [embed], files: [nanoResult.attachment], allowedMentions: { repliedUser: false } }).catch(() => {});
+      return true;
+    }
+
+    const fallback = await requestImageGenerationFallback({
       prompt,
       imageUrl: image?.url || null,
       userId: message.author.id,
       channelId: message.channel.id,
     });
 
-    if (result?.imageUrl) {
+    if (fallback?.imageUrl) {
       const embed = new EmbedBuilder()
         .setColor("#ff7aa8")
         .setTitle("🎨 나츠미 그림 생성 완료")
         .setDescription(prompt || "첨부 이미지를 기반으로 생성했어.")
-        .setImage(result.imageUrl)
+        .setImage(fallback.imageUrl)
         .setTimestamp();
       await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } }).catch(() => {});
       return true;
@@ -175,16 +263,16 @@ const handleAiImageChannel = async (message) => {
 
     await message.reply({
       content: [
-        "🎨 그림 요청을 받았어!",
-        "아직 이미지 생성 API가 연결되지 않았으면 실제 그림 생성은 대기 상태야.",
-        "환경변수 `NATSUMI_IMAGE_API_URL`을 연결하면 이 채널에서 바로 그림을 생성할 수 있어.",
+        "🎨 그림 요청은 받았어!",
+        "구글 나노 바나나를 쓰려면 `NATSUMI_IMAGE_API_KEY` 또는 `GEMINI_API_KEY`가 필요해.",
+        "모델 기본값은 `gemini-2.5-flash-image-preview`로 잡아놨어.",
       ].join("\n"),
       allowedMentions: { repliedUser: false },
     }).catch(() => {});
   } catch (error) {
     console.error("[NatsumiImage] failed:", error);
     await message.reply({
-      content: "그림 생성 요청 중 오류가 났어. 이미지 API 상태를 확인해줘 😭",
+      content: "그림 생성 요청 중 오류가 났어. API 키, 모델명, 이미지 안전 필터를 확인해줘 😭",
       allowedMentions: { repliedUser: false },
     }).catch(() => {});
   }
