@@ -96,7 +96,7 @@ const loadNatsumiSetup = async (guildId) => {
 
 const getFeatureOnlyChannelIds = (setup) => {
   const channels = setup?.featureChannels || {};
-  return [channels.emoji, channels.secret, channels.anonymous, channels.aiImage].filter(Boolean);
+  return [channels.emoji, channels.secret, channels.anonymous, channels.aiImage, channels.tts].filter(Boolean);
 };
 
 const hasManageGuild = (member) => Boolean(

@@ -34,11 +34,13 @@ const packageJson = {
   dependencies: {
     "@google/genai": "^1.52.0",
     "@google/generative-ai": "^0.24.1",
+    "@discordjs/voice": "^0.19.0",
     "@napi-rs/canvas": "^1.0.0",
     axios: "^1.15.2",
     "discord-html-transcripts": "^3.1.4",
     "discord.js": "^14.9.0",
     dotenv: "^16.0.3",
+    "ffmpeg-static": "^5.2.0",
     mongoose: "^7.0.3",
     "node-fetch": "^2.6.9",
     tsx: "^4.21.0",
