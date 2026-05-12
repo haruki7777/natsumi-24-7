@@ -1,7 +1,5 @@
 import {
   ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   EmbedBuilder,
   SlashCommandBuilder,
   StringSelectMenuBuilder,
@@ -28,26 +26,11 @@ export const buildTtsSettingsView = async (interaction) => {
     .setAuthor({ name: "카미봇 설정", iconURL: interaction.client.user.displayAvatarURL() })
     .setTitle("TTS 목소리 바꾸기")
     .setDescription([
-      "짠! 새로운 목소리가 생겼어요!",
-      "아래 메뉴에서 TTS 목소리를 선택하면, TTS 채널에서 채팅을 칠 때 그 목소리로 읽어요.",
+      "음성 채널에 들어간 상태로 TTS 채널에 채팅을 치면 나츠미가 들어와서 읽어줘요.",
+      "아래 메뉴에서 목소리를 고르면 다음 TTS부터 바로 그 설정을 사용해요.",
       "",
       `현재 목소리: **${pref?.voiceName || DEFAULT_TTS_VOICE.name}**`,
     ].join("\n"));
-
-  const links = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setLabel("설정 홈")
-      .setStyle(ButtonStyle.Link)
-      .setURL(process.env.NATSUMI_DASHBOARD_URL || "https://github.com/haruki7777/natsumi-dashboard"),
-    new ButtonBuilder()
-      .setLabel("이 채널 설정")
-      .setStyle(ButtonStyle.Link)
-      .setURL(process.env.NATSUMI_DASHBOARD_URL || "https://github.com/haruki7777/natsumi-dashboard"),
-    new ButtonBuilder()
-      .setLabel("TTS 관리")
-      .setStyle(ButtonStyle.Link)
-      .setURL(process.env.NATSUMI_DASHBOARD_URL || "https://github.com/haruki7777/natsumi-dashboard")
-  );
 
   const voiceSelect = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -56,7 +39,7 @@ export const buildTtsSettingsView = async (interaction) => {
       .addOptions(buildVoiceOptions(pref))
   );
 
-  return { embeds: [embed], components: [links, voiceSelect], ephemeral: true };
+  return { embeds: [embed], components: [voiceSelect], ephemeral: true };
 };
 
 export default {

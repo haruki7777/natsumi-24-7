@@ -29,3 +29,13 @@ export const TTS_VOICES = [
 export const DEFAULT_TTS_VOICE = TTS_VOICES.find((voice) => voice.name === "야옹이") || TTS_VOICES[0];
 
 export const getTtsVoiceByValue = (value) => TTS_VOICES.find((voice) => voice.value === value || voice.name === value) || DEFAULT_TTS_VOICE;
+
+export const getFishReferenceId = (voiceName) => {
+  const voice = getTtsVoiceByValue(voiceName);
+  const envKey = `NATSUMI_FISH_REF_${voice.name.replace(/[^0-9A-Za-z가-힣]/g, "_").toUpperCase()}`;
+  if (process.env[envKey]) return process.env[envKey];
+
+  if (voice.description.includes("일본어")) return process.env.NATSUMI_FISH_REF_JP || "8ef4a238714b45718ce04243307c57a7";
+  if (voice.description.includes("남성")) return process.env.NATSUMI_FISH_REF_MALE || "802e3bc2b27e49c2995d23ef70e6ac89";
+  return process.env.NATSUMI_FISH_REF_FEMALE || "8ef4a238714b45718ce04243307c57a7";
+};

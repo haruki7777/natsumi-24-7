@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 import { PermissionsBitField } from "discord.js";
 import {
   AudioPlayerStatus,
+  StreamType,
   VoiceConnectionStatus,
   createAudioPlayer,
   createAudioResource,
@@ -10,6 +11,7 @@ import {
 } from "@discordjs/voice";
 import ffmpegPath from "ffmpeg-static";
 import NatsumiTtsPreference from "../models/NatsumiTtsPreference.js";
+import { getFishReferenceId } from "./ttsVoices.js";
 
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
 
@@ -27,7 +29,7 @@ const cleanText = (message) => {
     .slice(0, MAX_TTS_LENGTH);
 };
 
-const buildTtsUrl = (text, voice = null) => {
+const buildStreamElementsTtsUrl = (text, voice = null) => {
   const endpoint = process.env.NATSUMI_TTS_API_URL || "https://api.streamelements.com/kappa/v2/speech";
   const url = new URL(endpoint);
   if (!url.searchParams.has("voice")) url.searchParams.set("voice", voice || process.env.NATSUMI_TTS_VOICE || "Seoyeon");
@@ -35,12 +37,48 @@ const buildTtsUrl = (text, voice = null) => {
   return url;
 };
 
-const fetchTtsBuffer = async (text, voice = null) => {
-  const response = await fetch(buildTtsUrl(text, voice), {
+const fetchStreamElementsBuffer = async (text, voice = null) => {
+  const response = await fetch(buildStreamElementsTtsUrl(text, voice), {
     headers: { "User-Agent": "NatsumiDiscordBot/1.0" },
   });
   if (!response.ok) throw new Error(`TTS API ${response.status}`);
   return Buffer.from(await response.arrayBuffer());
+};
+
+const fetchFishAudioBuffer = async (text, pref = null) => {
+  const apiKey = process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY;
+  if (!apiKey) return null;
+
+  const response = await fetch(process.env.NATSUMI_FISH_AUDIO_URL || "https://api.fish.audio/v1/tts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      model: process.env.NATSUMI_FISH_AUDIO_MODEL || "s2",
+    },
+    body: JSON.stringify({
+      text,
+      format: "mp3",
+      reference_id: getFishReferenceId(pref?.voiceName || pref?.voiceId),
+    }),
+  });
+
+  if (!response.ok) throw new Error(`Fish Audio TTS API ${response.status}`);
+  return Buffer.from(await response.arrayBuffer());
+};
+
+const fetchTtsBuffer = async (text, pref = null) => {
+  const provider = String(process.env.NATSUMI_TTS_PROVIDER || "").toLowerCase();
+  if (provider === "fish" || process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY) {
+    try {
+      const fishBuffer = await fetchFishAudioBuffer(text, pref);
+      if (fishBuffer) return fishBuffer;
+    } catch (error) {
+      if (provider === "fish") throw error;
+      console.warn("[NatsumiTTS] Fish Audio failed, falling back to StreamElements:", error.message);
+    }
+  }
+  return fetchStreamElementsBuffer(text, pref?.voiceId || null);
 };
 
 const waitForPlayerIdle = (player) => new Promise((resolve, reject) => {
@@ -72,7 +110,7 @@ const playBuffer = async ({ message, voiceChannel, buffer }) => {
   try {
     await entersState(connection, VoiceConnectionStatus.Ready, 15000);
     const player = createAudioPlayer();
-    const resource = createAudioResource(Readable.from(buffer));
+    const resource = createAudioResource(Readable.from([buffer]), { inputType: StreamType.Arbitrary });
     connection.subscribe(player);
     player.play(resource);
     await entersState(player, AudioPlayerStatus.Playing, 15000);
@@ -101,7 +139,7 @@ export const speakMessage = async ({ message, voiceChannel }) => {
       guildId: message.guild.id,
       userId: message.author.id,
     }).lean().catch(() => null);
-    const buffer = await fetchTtsBuffer(text, pref?.voiceId || null);
+    const buffer = await fetchTtsBuffer(text, pref);
     return playBuffer({ message, voiceChannel, buffer });
   });
 };
