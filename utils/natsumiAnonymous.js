@@ -72,6 +72,7 @@ export const sendAnonymousPlainMessage = async ({ channel, guildId, userId, cont
   const anonIp = await getOrCreateAnonIp(guildId, userId);
   const username = `ㅇㅇ(${anonIp})`;
   const text = content?.trim() || (imageUrl ? "첨부 이미지" : "");
+  const components = buildAnonGuideButtons();
 
   const webhook = await getAnonWebhook(channel);
   if (webhook) {
@@ -79,15 +80,18 @@ export const sendAnonymousPlainMessage = async ({ channel, guildId, userId, cont
       username,
       content: text,
       files: imageUrl ? [imageUrl] : [],
+      components,
       allowedMentions: { parse: [] },
     }).catch(() => channel.send({
       content: `**${username}**\n${[text, imageUrl].filter(Boolean).join("\n")}`,
+      components,
       allowedMentions: { parse: [] },
     }));
   }
 
   return channel.send({
     content: `**${username}**\n${[text, imageUrl].filter(Boolean).join("\n")}`,
+    components,
     allowedMentions: { parse: [] },
   });
 };
