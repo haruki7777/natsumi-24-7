@@ -1,5 +1,6 @@
 import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { GoogleGenAI, Modality } from "@google/genai";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 
 let googleImageClient = null;
 let googleImageKey = null;
@@ -72,15 +73,49 @@ export const buildImagePrompt = ({
   return parts.join("\n");
 };
 
+const MAX_INLINE_IMAGE_SIDE = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_SIDE || 1280);
+const MAX_INLINE_IMAGE_BYTES = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_BYTES || 1_500_000);
+
+const fetchImageArrayBuffer = async (url) => {
+  const signal = AbortSignal.timeout?.(Number(process.env.NATSUMI_IMAGE_FETCH_TIMEOUT_MS || 15000));
+  const response = await fetch(url, signal ? { signal } : undefined);
+  if (!response.ok) throw new Error(`source image fetch failed ${response.status}`);
+  return response.arrayBuffer();
+};
+
+const downscaleImageForAi = async (arrayBuffer, image) => {
+  const source = Buffer.from(arrayBuffer);
+  const width = Number(image?.width || 0);
+  const height = Number(image?.height || 0);
+  const maxSide = Math.max(width, height);
+
+  if (source.byteLength <= MAX_INLINE_IMAGE_BYTES && (!maxSide || maxSide <= MAX_INLINE_IMAGE_SIDE)) {
+    return {
+      data: source.toString("base64"),
+      mimeType: image.contentType || "image/png",
+    };
+  }
+
+  const loaded = await loadImage(source);
+  const scale = Math.min(1, MAX_INLINE_IMAGE_SIDE / Math.max(loaded.width, loaded.height));
+  const targetWidth = Math.max(1, Math.round(loaded.width * scale));
+  const targetHeight = Math.max(1, Math.round(loaded.height * scale));
+  const canvas = createCanvas(targetWidth, targetHeight);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(loaded, 0, 0, targetWidth, targetHeight);
+
+  const buffer = canvas.toBuffer("image/png");
+  return {
+    data: buffer.toString("base64"),
+    mimeType: "image/png",
+  };
+};
+
 const imageUrlToInlineData = async (image) => {
   if (!image?.url) return null;
 
-  const response = await fetch(image.url);
-  if (!response.ok) throw new Error(`source image fetch failed ${response.status}`);
-
-  const arrayBuffer = await response.arrayBuffer();
-  const data = Buffer.from(arrayBuffer).toString("base64");
-  const mimeType = image.contentType || "image/png";
+  const arrayBuffer = await fetchImageArrayBuffer(image.url);
+  const { data, mimeType } = await downscaleImageForAi(arrayBuffer, image);
   return { inlineData: { mimeType, data } };
 };
 
