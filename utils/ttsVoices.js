@@ -44,31 +44,69 @@ export const isStaticTtsVoiceId = (voiceId) => {
   return TTS_VOICES.some((voice) => voice.value === voiceId || voice.name === voiceId);
 };
 
+const getFishVoiceLocale = (voice) => {
+  const haystack = [
+    voice.title,
+    voice.description,
+    ...(voice.languages || []),
+    ...(voice.tags || []),
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (/한국|korean|\bko\b|ko-|kr|korea|seoul/.test(haystack)) return "한국어";
+  if (/일본|japanese|\bja\b|ja-|jp|japan|nihongo|日本/.test(haystack)) return "일본어";
+  return null;
+};
+
+const getFishVoiceStyle = (voice) => {
+  const text = [...(voice.tags || []), voice.description || ""].join(" ").toLowerCase();
+  if (/female|woman|girl|여성|소녀/.test(text)) return "여성";
+  if (/male|man|boy|남성|소년/.test(text)) return "남성";
+  if (/anime|애니|character|캐릭터/.test(text)) return "애니/캐릭터";
+  return "보이스";
+};
+
 export const fetchFishAudioVoiceOptions = async ({ limit = 25 } = {}) => {
-  const url = new URL("https://api.fish.audio/model");
-  url.searchParams.set("page_size", String(Math.min(Math.max(limit, 1), 50)));
-  url.searchParams.set("page_number", "1");
-  url.searchParams.set("sort_by", "task_count");
-
   const apiKey = process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY;
-  const response = await fetch(url, {
-    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-  });
-  if (!response.ok) throw new Error(`Fish voices ${response.status}`);
+  const found = [];
+  const localeCounts = new Map();
 
-  const data = await response.json();
-  return (data.items || [])
-    .filter((voice) => voice?._id && voice?.title)
-    .map((voice) => {
-      const languages = (voice.languages || []).join(", ") || "language unknown";
-      const tags = (voice.tags || []).slice(0, 2).join(" ");
-      const description = [languages, tags].filter(Boolean).join(" · ").slice(0, 100);
-      return {
-        label: String(voice.title).slice(0, 100),
-        name: String(voice.title),
+  for (let page = 1; page <= 6 && found.length < limit; page += 1) {
+    const url = new URL("https://api.fish.audio/model");
+    url.searchParams.set("page_size", "50");
+    url.searchParams.set("page_number", String(page));
+    url.searchParams.set("sort_by", "task_count");
+
+    const response = await fetch(url, {
+      headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+    });
+    if (!response.ok) throw new Error(`Fish voices ${response.status}`);
+
+    const data = await response.json();
+    const items = data.items || [];
+    for (const voice of items) {
+      if (!voice?._id || !voice?.title) continue;
+      const locale = getFishVoiceLocale(voice);
+      if (!locale) continue;
+
+      const title = String(voice.title).replace(/\s+/g, " ").trim();
+      const style = getFishVoiceStyle(voice);
+      const nextCount = (localeCounts.get(locale) || 0) + 1;
+      localeCounts.set(locale, nextCount);
+      const hasHangulTitle = /[가-힣]/.test(title);
+      const displayName = hasHangulTitle ? `${locale} · ${title}` : `${locale} 보이스 ${nextCount}`;
+      found.push({
+        label: displayName.slice(0, 100),
+        name: displayName,
         value: `fish:${voice._id}`,
         voiceId: voice._id,
-        description: description || `Fish Audio · ${voice.task_count || 0} uses`,
-      };
-    });
+        description: `Fish Audio · ${locale} · ${style}`.slice(0, 100),
+      });
+
+      if (found.length >= limit) break;
+    }
+
+    if (items.length === 0) break;
+  }
+
+  return found;
 };

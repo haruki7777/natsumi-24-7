@@ -73,9 +73,9 @@ export const buildImagePrompt = ({
   return parts.join("\n");
 };
 
-const MAX_INLINE_IMAGE_SIDE = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_SIDE || 768);
-const MAX_INLINE_IMAGE_BYTES = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_BYTES || 800_000);
-const IMAGE_MODEL_TIMEOUT_MS = Number(process.env.NATSUMI_IMAGE_MODEL_TIMEOUT_MS || 60_000);
+const MAX_INLINE_IMAGE_SIDE = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_SIDE || 512);
+const MAX_INLINE_IMAGE_BYTES = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_BYTES || 500_000);
+const IMAGE_MODEL_TIMEOUT_MS = Number(process.env.NATSUMI_IMAGE_MODEL_TIMEOUT_MS || 45_000);
 
 const fetchImageArrayBuffer = async (url) => {
   const signal = AbortSignal.timeout?.(Number(process.env.NATSUMI_IMAGE_FETCH_TIMEOUT_MS || 15000));
@@ -126,9 +126,8 @@ const createNanoBananaImage = async ({ prompt, image }) => {
 
   const model = cleanEnv(process.env.NATSUMI_IMAGE_MODEL) || "gemini-2.5-flash-image-preview";
   const finalPrompt = [
-    "You are Natsumi's image generation engine.",
-    "Transform or generate a polished image from the user's prompt and attachment.",
-    "Keep it safe and avoid sexual content involving minors or non-consensual themes.",
+    "Create the requested safe anime-style image quickly.",
+    "Preserve the main subject when an attachment is provided.",
     prompt || "Convert the attached image into a cute anime-style illustration while preserving the main subject.",
   ].join("\n");
 
@@ -189,7 +188,7 @@ export const runNatsumiImageGeneration = async ({ message, prompt, image, status
         content: "생각하는 시간이 조금 길어지고 있어요. 이미지 모델이 아직 처리 중이라 그대로 기다려볼게요.",
         components: [],
       }).catch(() => {});
-    }, Number(process.env.NATSUMI_IMAGE_SLOW_NOTICE_MS || 10000));
+    }, Number(process.env.NATSUMI_IMAGE_SLOW_NOTICE_MS || 5000));
   }
 
   const nanoResult = await createNanoBananaImage({ prompt, image }).catch((error) => {
