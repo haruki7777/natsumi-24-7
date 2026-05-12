@@ -143,6 +143,9 @@ const ensureTextTtsChannel = async (guild, setup) => {
   const currentTts = channels.tts ? await guild.channels.fetch(channels.tts).catch(() => null) : null;
   if (currentTts?.type === ChannelType.GuildText) return { setup, repaired: false };
 
+  const ttsCategory = setup?.voiceCategoryId
+    ? await guild.channels.fetch(setup.voiceCategoryId).catch(() => null)
+    : null;
   const featureCategory = setup?.featureCategoryId
     ? await guild.channels.fetch(setup.featureCategoryId).catch(() => null)
     : null;
@@ -150,7 +153,7 @@ const ensureTextTtsChannel = async (guild, setup) => {
   const channel = await guild.channels.create({
     name: ttsItem.name,
     type: ChannelType.GuildText,
-    parent: featureCategory?.id || null,
+    parent: ttsCategory?.id || featureCategory?.id || null,
     topic: ttsItem.topic,
     reason: "나츠미 TTS 텍스트 채널 보정",
   });
@@ -231,7 +234,7 @@ export const createNatsumiChannels = async (guild, userId = null) => {
     const channel = await guild.channels.create({
       name: item.name,
       type: ChannelType.GuildText,
-      parent: featureCategory.id,
+      parent: item.key === "tts" ? voiceCategory.id : featureCategory.id,
       topic: item.topic,
       reason: "나츠미 자동 채널 구성",
     });
