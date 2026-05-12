@@ -1,64 +1,11 @@
 import {
   ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
-import NatsumiAnonIdentity from "../models/NatsumiAnonIdentity.js";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
-
-const randomAnonIp = () => {
-  const first = Math.floor(Math.random() * 223) + 1;
-  const second = Math.floor(Math.random() * 255);
-  return `${first}.${second}`;
-};
-
-const getOrCreateAnonIp = async (guildId, userId) => {
-  const existing = await NatsumiAnonIdentity.findOne({ guildId, userId });
-  if (existing?.anonIp) return existing.anonIp;
-
-  const created = await NatsumiAnonIdentity.create({
-    guildId,
-    userId,
-    anonIp: randomAnonIp(),
-    updatedAt: new Date(),
-  });
-
-  return created.anonIp;
-};
-
-const resetAnonIp = async (guildId, userId) => {
-  const existing = await NatsumiAnonIdentity.findOne({ guildId, userId }).lean().catch(() => null);
-  let anonIp = randomAnonIp();
-  for (let i = 0; i < 5 && existing?.anonIp === anonIp; i += 1) {
-    anonIp = randomAnonIp();
-  }
-
-  await NatsumiAnonIdentity.findOneAndUpdate(
-    { guildId, userId },
-    { guildId, userId, anonIp, updatedAt: new Date() },
-    { upsert: true, new: true }
-  );
-  return anonIp;
-};
-
-const buildAnonButtons = () => [
-  new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("NatsumiAnon_open")
-      .setLabel("새 메시지 작성")
-      .setEmoji("🎭")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("NatsumiAnon_reset")
-      .setLabel("유동 IP 초기화")
-      .setEmoji("🌀")
-      .setStyle(ButtonStyle.Secondary)
-  ),
-];
+import { resetAnonIp, sendAnonymousPlainMessage } from "../utils/natsumiAnonymous.js";
 
 const openModal = async (interaction) => {
   const modal = new ModalBuilder()
@@ -69,7 +16,7 @@ const openModal = async (interaction) => {
     .setCustomId("message")
     .setLabel("익명으로 보낼 내용을 적어줘")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder("여기에 메시지를 적으면 가상 유동 IP로 익명 전송돼.")
+    .setPlaceholder("여기에 메시지를 적으면 유동 IP 닉네임으로 전송돼.")
     .setRequired(true)
     .setMaxLength(1500);
 
@@ -77,31 +24,12 @@ const openModal = async (interaction) => {
   return interaction.showModal(modal);
 };
 
-const sendAnonymousMessage = async (interaction, content) => {
-  const anonIp = await getOrCreateAnonIp(interaction.guildId, interaction.user.id);
-  const embed = new EmbedBuilder()
-    .setColor("#ff7aa8")
-    .setAuthor({ name: `ㅇㅇ(${anonIp})` })
-    .setDescription(content)
-    .setFooter({ text: "나츠미 익명 가면방 · 실제 IP가 아닌 가상 유동 ID입니다" })
-    .setTimestamp();
-
-  return interaction.channel.send({ embeds: [embed], components: buildAnonButtons() });
-};
-
-const isAnonymousMessageCard = (message) => {
-  const embed = message?.embeds?.[0];
-  const authorName = String(embed?.author?.name || "");
-  const footerText = String(embed?.footer?.text || "");
-  return /^ㅇㅇ\(\d{1,3}\.\d{1,3}\)$/.test(authorName) && footerText.includes("익명 가면방");
-};
-
 export default {
   name: "NatsumiAnon",
 
   async execute(interaction) {
     if (!interaction.guild) {
-      return interaction.reply({ content: "서버에서만 사용할 수 있어 😤", ephemeral: true });
+      return interaction.reply({ content: "서버에서만 사용할 수 있어.", ephemeral: true });
     }
 
     const setup = await NatsumiGuildSetup.findOne({ guildId: interaction.guildId }).lean().catch(() => null);
@@ -113,9 +41,6 @@ export default {
     }
 
     if (interaction.isButton() && interaction.customId === "NatsumiAnon_open") {
-      if (isAnonymousMessageCard(interaction.message)) {
-        await interaction.message.delete().catch(() => {});
-      }
       return openModal(interaction);
     }
 
@@ -130,11 +55,16 @@ export default {
     if (interaction.isModalSubmit() && interaction.customId === "NatsumiAnon_submit") {
       const content = interaction.fields.getTextInputValue("message")?.trim();
       if (!content) {
-        return interaction.reply({ content: "내용이 비어있어. 장난치는 거야? 😤", ephemeral: true });
+        return interaction.reply({ content: "내용이 비어있어.", ephemeral: true });
       }
 
-      await sendAnonymousMessage(interaction, content);
-      return interaction.reply({ content: "🎭 익명 메시지를 보냈어. 이번에도 정체는 숨겨줬다구, 흥.", ephemeral: true });
+      await sendAnonymousPlainMessage({
+        channel: interaction.channel,
+        guildId: interaction.guildId,
+        userId: interaction.user.id,
+        content,
+      });
+      return interaction.reply({ content: "익명 메시지를 보냈어.", ephemeral: true });
     }
   },
 };

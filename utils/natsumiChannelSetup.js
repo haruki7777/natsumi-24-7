@@ -1,12 +1,10 @@
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   ChannelType,
   EmbedBuilder,
   PermissionFlagsBits,
 } from "discord.js";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
+import { buildAnonGuideButtons } from "./natsumiAnonymous.js";
 
 const textChannels = [
   {
@@ -110,20 +108,7 @@ const voiceChannels = [
 const buildGuideComponents = (item) => {
   if (item.key !== "anonymous") return [];
 
-  return [
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("NatsumiAnon_open")
-        .setLabel("새 메시지 작성")
-        .setEmoji("🎭")
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId("NatsumiAnon_reset")
-        .setLabel("유동 IP 초기화")
-        .setEmoji("🌀")
-        .setStyle(ButtonStyle.Secondary)
-    ),
-  ];
+  return buildAnonGuideButtons();
 };
 
 const sendGuide = async (channel, item) => {
@@ -163,6 +148,7 @@ export const createNatsumiChannels = async (guild, userId = null) => {
         PermissionFlagsBits.SendMessages,
         PermissionFlagsBits.ManageChannels,
         PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.ManageWebhooks,
         PermissionFlagsBits.ReadMessageHistory,
         PermissionFlagsBits.EmbedLinks,
         PermissionFlagsBits.AttachFiles,
