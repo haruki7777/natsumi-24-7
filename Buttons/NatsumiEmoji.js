@@ -1,4 +1,5 @@
 import { PermissionFlagsBits } from "discord.js";
+import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
 import { createEmojiFromMessage } from "../utils/natsumiEmoji.js";
 
 export default {
@@ -11,6 +12,14 @@ export default {
 
     if (!interaction.guild) {
       return interaction.reply({ content: "서버에서만 사용할 수 있어요.", ephemeral: true });
+    }
+
+    const setup = await NatsumiGuildSetup.findOne({ guildId: interaction.guild.id }).lean().catch(() => null);
+    if (setup?.featureChannels?.emoji !== interaction.channelId) {
+      return interaction.reply({
+        content: "이 버튼은 서버셋업에서 지정한 이모지 정제소에서만 사용할 수 있어요.",
+        ephemeral: true,
+      });
     }
 
     const botMember = interaction.guild.members.me || await interaction.guild.members.fetchMe().catch(() => null);
@@ -36,6 +45,8 @@ export default {
       });
 
       await interaction.message.edit({ components: [] }).catch(() => {});
+      await interaction.message.delete().catch(() => {});
+      await sourceMessage.delete().catch(() => {});
       return interaction.editReply(`이모지 추가 완료: ${emoji} / 이름: \`${emoji.name}\``);
     } catch (error) {
       console.error("[NatsumiEmojiButton] failed:", error);

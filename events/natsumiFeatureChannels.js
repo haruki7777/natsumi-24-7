@@ -59,7 +59,6 @@ const getChannelFeatureKey = (channel, setup) => {
 
   const name = String(channel.name || "").replace(/\s+/g, "").toLowerCase();
 
-  if (name.includes("이모지") || name.includes("emoji") || name.includes("정제소")) return "emoji";
   if (name.includes("비밀") || name.includes("secret") || name.includes("속삭임")) return "secret";
   if (name.includes("익명") || name.includes("anonymous") || name.includes("가면")) return "anonymous";
   if (name.includes("그림") || name.includes("image") || name.includes("공방")) return "aiImage";
@@ -193,6 +192,7 @@ const handleEmojiChannel = async (message) => {
       content: `✅ 이모지 등록 완료! ${emoji}\n이름: \`${emoji.name}\``,
       allowedMentions: { repliedUser: false },
     }).catch(() => {});
+    await message.delete().catch(() => {});
   } catch (error) {
     console.error("[NatsumiEmoji] failed:", error);
     await message.reply({

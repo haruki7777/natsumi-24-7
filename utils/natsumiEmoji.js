@@ -1,5 +1,10 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { spawn } from "node:child_process";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import ffmpegPath from "ffmpeg-static";
 
 export const getFirstEmojiImage = (message) => {
   return message.attachments.find((file) => {
@@ -32,12 +37,6 @@ export const buildEmojiChoiceRow = (messageId) => [
       .setLabel("빈 공간을 투명하게 채우기")
       .setStyle(ButtonStyle.Secondary)
   ),
-  new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`NatsumiEmoji_raw_${messageId}`)
-      .setLabel("GIF 그대로 추가")
-      .setStyle(ButtonStyle.Success)
-  ),
 ];
 
 const loadImageMeta = async (url) => {
@@ -51,11 +50,58 @@ const loadImageMeta = async (url) => {
 
 export const shouldAskEmojiResize = async (image) => {
   if (!image?.url) return false;
-  if ((image.contentType || "").includes("gif")) return true;
 
   const loaded = await loadImageMeta(image.url);
   const ratio = loaded.width / Math.max(loaded.height, 1);
   return ratio < 0.92 || ratio > 1.08;
+};
+
+export const isGifEmojiImage = (image) => {
+  return (image?.contentType || "").includes("gif") || /\.gif$/i.test(image?.name || "");
+};
+
+const fetchImageBuffer = async (url) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`image fetch failed ${response.status}`);
+  return Buffer.from(await response.arrayBuffer());
+};
+
+const runFfmpeg = (args) => new Promise((resolve, reject) => {
+  if (!ffmpegPath) return reject(new Error("ffmpeg is not available"));
+
+  const child = spawn(ffmpegPath, args, { windowsHide: true });
+  let stderr = "";
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk.toString();
+  });
+  child.once("error", reject);
+  child.once("close", (code) => {
+    if (code === 0) resolve();
+    else reject(new Error(stderr || `ffmpeg exited with ${code}`));
+  });
+});
+
+const buildAnimatedEmojiBuffer = async (url, mode = "crop") => {
+  const workDir = path.join(tmpdir(), `natsumi-emoji-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  await mkdir(workDir, { recursive: true });
+
+  const input = path.join(workDir, "input.gif");
+  const palette = path.join(workDir, "palette.png");
+  const output = path.join(workDir, "output.gif");
+  const fps = Math.max(5, Math.min(Number(process.env.NATSUMI_EMOJI_GIF_FPS || 12), 20));
+  const resizeFilter = mode === "pad"
+    ? "scale=128:128:force_original_aspect_ratio=decrease,pad=128:128:(ow-iw)/2:(oh-ih)/2:color=0x00000000"
+    : "scale=128:128:force_original_aspect_ratio=increase,crop=128:128";
+  const filter = `fps=${fps},${resizeFilter}`;
+
+  try {
+    await writeFile(input, await fetchImageBuffer(url));
+    await runFfmpeg(["-y", "-i", input, "-vf", `${filter},palettegen=reserve_transparent=on`, palette]);
+    await runFfmpeg(["-y", "-i", input, "-i", palette, "-filter_complex", `${filter} [x]; [x][1:v] paletteuse=alpha_threshold=128`, "-loop", "0", output]);
+    return await readFile(output);
+  } finally {
+    await rm(workDir, { recursive: true, force: true }).catch(() => {});
+  }
 };
 
 export const buildEmojiBuffer = async (url, mode = "crop") => {
@@ -85,8 +131,10 @@ export const createEmojiFromMessage = async ({ message, mode = "crop", actorTag 
   const emojiName = sanitizeEmojiName(message.content);
   let attachment;
 
-  if (mode === "raw" && ((image.contentType || "").includes("gif") || /\.gif$/i.test(image.name || ""))) {
+  if (isGifEmojiImage(image) && mode === "raw") {
     attachment = image.url;
+  } else if (isGifEmojiImage(image)) {
+    attachment = await buildAnimatedEmojiBuffer(image.url, mode);
   } else {
     attachment = await buildEmojiBuffer(image.url, mode);
   }
