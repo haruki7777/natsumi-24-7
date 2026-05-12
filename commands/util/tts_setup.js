@@ -39,8 +39,8 @@ export const buildTtsSettingsView = async (interaction) => {
       "음성 채널에 들어간 상태로 TTS 채널에 채팅을 치면 나츠미가 들어와서 읽어줘요.",
       "아래 메뉴에서 목소리를 고르면 다음 TTS부터 바로 그 설정을 사용해요.",
       process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY
-        ? "Fish Audio API에서 한국어/일본어 보이스만 골라 보여줘요."
-        : "Fish Audio API 키가 없으면 기본 보이스 목록을 보여줘요.",
+        ? "Fish Audio API에서는 한국어와 일본어로 판정된 보이스만 보여줘요."
+        : "Fish Audio API 키가 없으면 기본 한국어/일본어 보이스만 보여줘요.",
       "",
       `현재 목소리: **${pref?.voiceName || DEFAULT_TTS_VOICE.name}**`,
     ].join("\n"));
