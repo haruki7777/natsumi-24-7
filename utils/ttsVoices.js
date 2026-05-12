@@ -111,7 +111,7 @@ const makeKoreanLabel = (voice, locale, index) => {
   return `${locale} 보이스 ${index}`.slice(0, 100);
 };
 
-export const fetchFishAudioVoiceOptions = async ({ limit = 25 } = {}) => {
+export const fetchFishAudioVoiceOptions = async ({ limit = 25, locale: localeFilter = null } = {}) => {
   const apiKey = process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY;
   const found = [];
   const localeCounts = new Map();
@@ -136,6 +136,7 @@ export const fetchFishAudioVoiceOptions = async ({ limit = 25 } = {}) => {
 
       const locale = getFishVoiceLocale(voice);
       if (!locale) continue;
+      if (localeFilter && locale !== localeFilter) continue;
 
       const nextCount = (localeCounts.get(locale) || 0) + 1;
       localeCounts.set(locale, nextCount);

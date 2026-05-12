@@ -5,7 +5,7 @@ const natsumiTtsPreferenceSchema = new mongoose.Schema(
     guildId: { type: String, required: true, index: true },
     userId: { type: String, required: true, index: true },
     voiceId: { type: String, default: "Seoyeon" },
-    voiceName: { type: String, default: "야옹이" },
+    voiceName: { type: String, default: "한국어 여성" },
     updatedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

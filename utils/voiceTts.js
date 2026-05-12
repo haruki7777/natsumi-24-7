@@ -11,6 +11,7 @@ import {
 } from "@discordjs/voice";
 import ffmpegPath from "ffmpeg-static";
 import NatsumiTtsPreference from "../models/NatsumiTtsPreference.js";
+import { GUILD_TTS_USER_ID } from "../commands/util/tts_setup.js";
 import { getFishReferenceId, isStaticTtsVoiceId } from "./ttsVoices.js";
 
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
@@ -139,7 +140,7 @@ export const speakMessage = async ({ message, voiceChannel }) => {
   return enqueue(message.guild.id, async () => {
     const pref = await NatsumiTtsPreference.findOne({
       guildId: message.guild.id,
-      userId: message.author.id,
+      userId: GUILD_TTS_USER_ID,
     }).lean().catch(() => null);
     const buffer = await fetchTtsBuffer(text, pref);
     return playBuffer({ message, voiceChannel, buffer });
