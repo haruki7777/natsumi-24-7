@@ -11,6 +11,7 @@ const copyEntries = [
   "models",
   "utils",
   "Buttons",
+  "scripts/vortexa-start.mjs",
   "fonts",
   "tsconfig.json",
   ".env.example",
@@ -27,9 +28,11 @@ const packageJson = {
   scripts: {
     start: "tsx bot.ts",
     "start:lite": "tsx bot.ts",
+    "start:vortexa": "node scripts/vortexa-start.mjs",
     check: "node --check bot.ts",
   },
   dependencies: {
+    "@google/genai": "^1.52.0",
     "@google/generative-ai": "^0.24.1",
     "@napi-rs/canvas": "^1.0.0",
     axios: "^1.15.2",

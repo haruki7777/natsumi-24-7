@@ -3,6 +3,13 @@ import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { GoogleGenAI, Modality } from "@google/genai";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
 import ProcessedMessage from "../models/ProcessedMessage.js";
+import {
+  buildEmojiChoiceRow,
+  createEmojiFromMessage,
+  getFirstEmojiImage,
+  shouldAskEmojiResize,
+} from "../utils/natsumiEmoji.js";
+import { buildAiImageActionRows, runNatsumiImageGeneration } from "../utils/natsumiAiImage.js";
 
 let googleImageClient = null;
 let googleImageKey = null;
@@ -144,7 +151,7 @@ const createNanoBananaImage = async ({ prompt, image }) => {
 };
 
 const handleEmojiChannel = async (message) => {
-  const image = getFirstImage(message);
+  const image = getFirstEmojiImage(message);
   if (!image) {
     await message.reply({
       content: "이미지를 첨부하고, 메시지에는 이모지 이름을 적어줘. 이름은 영어/숫자/밑줄만 가능해 😤",
@@ -167,12 +174,19 @@ const handleEmojiChannel = async (message) => {
   await message.channel.sendTyping().catch(() => {});
 
   try {
-    const emojiName = sanitizeEmojiName(message.content);
-    const buffer = await buildEmojiBuffer(image.url);
-    const emoji = await message.guild.emojis.create({
-      attachment: buffer,
-      name: emojiName,
-      reason: `나츠미 이모지 등록 요청: ${message.author.tag}`,
+    if (await shouldAskEmojiResize(image)) {
+      await message.reply({
+        content: "올려준 이미지는 가로와 세로 길이가 달라요. 이모지로 쓰기 좋게 처리 방법을 골라주세요.",
+        components: buildEmojiChoiceRow(message.id),
+        allowedMentions: { repliedUser: false },
+      }).catch(() => {});
+      return true;
+    }
+
+    const emoji = await createEmojiFromMessage({
+      message,
+      mode: "crop",
+      actorTag: message.author.tag,
     });
 
     await message.reply({
@@ -191,7 +205,8 @@ const handleEmojiChannel = async (message) => {
 };
 
 const handleSecretChannel = async (message) => {
-  const deleteMs = Number(process.env.NATSUMI_SECRET_DELETE_MS || 15_000);
+  const rawDeleteMs = Number(process.env.NATSUMI_SECRET_DELETE_MS || 15_000);
+  const deleteMs = rawDeleteMs > 0 && rawDeleteMs < 1000 ? rawDeleteMs * 1000 : rawDeleteMs;
   const notice = await message.reply({
     content: `🌙 이 메시지는 ${Math.round(deleteMs / 1000)}초 뒤 사라져. 비밀은 오래 남기면 안 되거든 😤`,
     allowedMentions: { repliedUser: false },
@@ -270,12 +285,24 @@ const handleAiImageChannel = async (message) => {
   if (!prompt && !image) return false;
   await message.channel.sendTyping().catch(() => {});
 
+  if (image && !prompt) {
+    await message.reply({
+      content: `${image.name || "첨부 이미지"} (${image.width || "?"}x${image.height || "?"}, ${Math.round((image.size || 0) / 1024)}KB)\n이 파일로 어떤 작업을 할까요?`,
+      components: buildAiImageActionRows(message.id),
+      allowedMentions: { repliedUser: false },
+    }).catch(() => {});
+    return true;
+  }
+
   const waitMessage = await message.reply({
     content: "🎨 그림 요청을 받았어. 나노 바나나한테 슬쩍 부탁해볼게... 잠깐만 기다려 😤",
     allowedMentions: { repliedUser: false },
   }).catch(() => null);
 
   try {
+    await runNatsumiImageGeneration({ message, prompt, image, statusMessage: waitMessage });
+    return true;
+
     const nanoResult = await createNanoBananaImage({ prompt, image });
 
     if (nanoResult?.attachment) {

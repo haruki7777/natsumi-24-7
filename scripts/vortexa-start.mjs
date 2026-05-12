@@ -52,8 +52,6 @@ const cleanOldCache = () => {
     "temp",
     "logs",
     "node_modules/.cache",
-    "commands/nsfw",
-    "commands/nsfw2.js",
   ];
 
   for (const target of targets) remove(target);
@@ -79,7 +77,7 @@ const installDeps = () => {
   }
 
   log("refreshing dependencies quietly...");
-  run("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"]);
+  run("npm", ["install", "--no-audit", "--no-fund", "--prefer-online"]);
 };
 
 const startBot = () => {

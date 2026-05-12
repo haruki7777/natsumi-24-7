@@ -100,6 +100,24 @@ const hasManageChannels = (member) => Boolean(
   member?.permissions?.has(PermissionFlagsBits.Administrator)
 );
 
+const parseSlowmodeSeconds = (value) => {
+  const text = String(value || "").toLowerCase();
+  const patterns = [
+    { re: /(\d{1,6})\s*(?:밀리초|ms|msec|millisecond|milliseconds)\b/i, factor: 0.001 },
+    { re: /(\d{1,5})\s*(?:초|sec|secs|second|seconds|s)\b/i, factor: 1 },
+    { re: /(\d{1,4})\s*(?:분|min|mins|minute|minutes|m)\b/i, factor: 60 },
+    { re: /(\d{1,3})\s*(?:시간|hour|hours|h)\b/i, factor: 3600 },
+  ];
+
+  for (const { re, factor } of patterns) {
+    const match = text.match(re);
+    if (match) return Math.ceil(Number(match[1]) * factor);
+  }
+
+  const fallback = text.match(/\d{1,5}/);
+  return fallback ? Number(fallback[0]) : 0;
+};
+
 const findTargetChannel = (message, setup, raw) => {
   const mentioned = message.mentions.channels.first();
   if (mentioned) return mentioned;
@@ -157,10 +175,7 @@ const handleNatsumiAdminMode = async (message, setup) => {
       return true;
     }
 
-    const match = raw.match(/(\d{1,4})(초|s|분|m)?/i);
-    const amount = match ? Number(match[1]) : 0;
-    const unit = match?.[2] || "초";
-    const seconds = unit === "분" || unit.toLowerCase() === "m" ? amount * 60 : amount;
+    const seconds = parseSlowmodeSeconds(message.content);
     const safeSeconds = Math.max(0, Math.min(seconds, 21600));
     const target = findTargetChannel(message, setup, raw);
 
@@ -233,6 +248,7 @@ export default {
     const isCalled = isMentioned || (content.length > 0 && CALLWORDS.some((word) => lowerContent.includes(word.toLowerCase())));
 
     const natsumiSetup = message.guild ? await loadNatsumiSetup(message.guild.id) : null;
+    let dbProcessed = false;
 
     if (message.guild && natsumiSetup) {
       const featureOnlyChannels = getFeatureOnlyChannelIds(natsumiSetup);
@@ -241,6 +257,8 @@ export default {
 
     if (message.guild && isCalled) {
       if (!cacheAdd(localProcessedCache, message.id)) return;
+      if (await isAlreadyProcessedInDb(message)) return;
+      dbProcessed = true;
 
       const adminHandled = await handleNatsumiAdminMode(message, natsumiSetup);
       if (adminHandled) return;
@@ -262,7 +280,7 @@ export default {
       return sendTemporaryReply(message, "츤! 멘션만 덜렁 보내면 어쩌라는 거야? AI채팅 채널에서 제대로 불러줘 😤");
     }
 
-    if (await isAlreadyProcessedInDb(message)) return;
+    if (!dbProcessed && await isAlreadyProcessedInDb(message)) return;
 
     try {
       const bannedWords = await getBannedWords();

@@ -1,5 +1,6 @@
 import { PermissionFlagsBits } from "discord.js";
 import { createNatsumiChannels } from "../utils/natsumiChannelSetup.js";
+import { buildPremiumHeartPrompt, checkPremiumHeart } from "../utils/premiumHeart.js";
 
 export default {
   name: "NatsumiSetup",
@@ -9,6 +10,11 @@ export default {
 
     if (!interaction.guild) {
       return interaction.reply({ content: "서버에서만 사용할 수 있어 😤", ephemeral: true });
+    }
+
+    const heart = await checkPremiumHeart(interaction.user.id);
+    if (!heart.ok) {
+      return interaction.reply(buildPremiumHeartPrompt(interaction.user.id, heart)).catch(() => null);
     }
 
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)) {
