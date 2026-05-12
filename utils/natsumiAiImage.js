@@ -48,7 +48,7 @@ const MAX_INLINE_IMAGE_SIDE = numberEnv("NATSUMI_IMAGE_INPUT_MAX_SIDE", 448, { m
 const MAX_INLINE_IMAGE_BYTES = numberEnv("NATSUMI_IMAGE_INPUT_MAX_BYTES", 350_000, { min: 80_000, max: 1_500_000 });
 const IMAGE_MODEL_TIMEOUT_MS = numberEnv("NATSUMI_IMAGE_MODEL_TIMEOUT_MS", 30_000, { min: 10_000, max: 100_000 });
 const IMAGE_SLOW_NOTICE_MS = numberEnv("NATSUMI_IMAGE_SLOW_NOTICE_MS", 8_000, { min: 3_000, max: 30_000 });
-const IMAGE_TARGET_COUNT = 1;
+const IMAGE_TARGET_COUNT = 5;
 
 const estimateSeconds = Math.max(10, Math.ceil(IMAGE_MODEL_TIMEOUT_MS / 1000));
 
