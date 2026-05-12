@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main"]
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -157,6 +157,9 @@ jobs:
           VORTEXA_SERVER_ID: ${{ secrets.VORTEXA_SERVER_ID }}
           LITE_SHA: ${{ steps.lite.outputs.lite_sha }}
           EVENT_NAME: ${{ github.event_name }}
+          DISCORD_TOKEN: ${{ secrets.TOKEN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_NOTIFY_USER_ID: "1293232804745838733"
         shell: bash
         run: |
           set -euo pipefail
@@ -168,6 +171,31 @@ jobs:
 
           api="https://panel.vortexa.cloud/api/client/servers/${VORTEXA_SERVER_ID}"
           auth=(-H "Authorization: Bearer ${VORTEXA_API_KEY}" -H "Accept: application/json")
+          discord_token="${DISCORD_TOKEN:-${DISCORD_BOT_TOKEN:-}}"
+
+          discord_notify() {
+            local message="$1"
+            if [ -z "${discord_token:-}" ] || [ -z "${DISCORD_NOTIFY_USER_ID:-}" ]; then
+              return 0
+            fi
+
+            node -e 'process.stdout.write(JSON.stringify({recipient_id: process.env.DISCORD_NOTIFY_USER_ID}))' > /tmp/discord-dm.json
+            dm_channel="$(curl -fsS --max-time 20 -X POST \
+              -H "Authorization: Bot ${discord_token}" \
+              -H "Content-Type: application/json" \
+              --data-binary @/tmp/discord-dm.json \
+              https://discord.com/api/v10/users/@me/channels | node -e 'let s=""; process.stdin.on("data", d => s += d); process.stdin.on("end", () => { try { console.log(JSON.parse(s).id || "") } catch { console.log("") } })')"
+            if [ -z "${dm_channel}" ]; then
+              return 0
+            fi
+
+            DISCORD_MESSAGE="${message}" node -e 'process.stdout.write(JSON.stringify({content: process.env.DISCORD_MESSAGE}))' > /tmp/discord-message.json
+            curl -fsS --max-time 20 -X POST \
+              -H "Authorization: Bot ${discord_token}" \
+              -H "Content-Type: application/json" \
+              --data-binary @/tmp/discord-message.json \
+              "https://discord.com/api/v10/channels/${dm_channel}/messages" >/dev/null || true
+          }
 
           vortexa_get() {
             local url="$1"
@@ -219,6 +247,7 @@ jobs:
           if [ "${state}" = "offline" ]; then
             should_power=1
             signal="start"
+            discord_notify "⚠️ 나츠미 Vortexa 서버가 offline 상태라 자동으로 start를 시도할게. 5분 감시 루틴이 계속 확인 중이야."
           elif [ "${last_lite_sha}" != "${LITE_SHA}" ]; then
             should_power=1
             signal="restart"
@@ -240,6 +269,7 @@ jobs:
               --data-binary "${LITE_SHA}" "${api}/files/write?file=/last-lite-sha.txt" >/dev/null || true
             echo "Bot Ready signal found."
           else
+            discord_notify "⚠️ 나츠미 Vortexa 서버에서 Ready 로그를 확인하지 못했어. 다음 5분 감시에서 다시 확인하고 필요하면 켤게."
             echo "No recent Ready signal found in startup.log." >&2
             exit 1
           fi

@@ -47,6 +47,7 @@ const clientId = process.env.ID?.replace(/['"]/g, "").trim();
 const mongoUri = process.env.MONGOOSE?.replace(/['"]/g, "").trim();
 const botEnv = process.env.BOT_ENV || process.env.NODE_ENV || "production";
 const botName = process.env.BOT_NAME || "Natsumi";
+const shutdownNotifyUserId = process.env.SERVER_DOWN_NOTIFY_USER_ID || process.env.NATSUMI_OWNER_ID || "1293232804745838733";
 const instanceId = Math.random().toString(36).substring(2, 8);
 const logs: string[] = [];
 
@@ -60,12 +61,35 @@ let discordActive = false;
 let discordStarting = false;
 let runtimeIntervalsStarted = false;
 let failoverLeaseTimer: NodeJS.Timeout | null = null;
+let shutdownAlertSent = false;
 
 const addLog = (msg: string) => {
   const entry = `[${new Date().toLocaleTimeString()}] ${msg}`;
   logs.push(entry);
   if (logs.length > LOG_LIMIT) logs.shift();
   console.log(entry);
+};
+
+const notifyServerDown = async (reason: string) => {
+  if (shutdownAlertSent || !shutdownNotifyUserId || !client?.isReady()) return;
+  shutdownAlertSent = true;
+
+  try {
+    const user = await client.users.fetch(shutdownNotifyUserId);
+    await user.send([
+      "⚠️ 나츠미 서버가 곧 내려갈 것 같아.",
+      `사유: ${reason}`,
+      "5분 자동 감시가 Vortexa 패널을 확인해서 꺼져 있으면 다시 켜볼게.",
+    ].join("\n"));
+  } catch (error: any) {
+    addLog(`[ShutdownNotify] Failed: ${error.message}`);
+  }
+};
+
+const shutdownWithAlert = async (reason: string, code = 0) => {
+  addLog(`[Shutdown] ${reason}`);
+  await notifyServerDown(reason);
+  process.exit(code);
 };
 
 const disabledCommands = new Set(
@@ -442,8 +466,20 @@ const start = async () => {
   addLog(`[Boot] Starting ${botName} in ${botEnv} mode.`);
   addLog(geminiKey ? "[Boot] Gemini key found." : "[Boot] Gemini key missing; AI features may fail.");
 
-  process.on("unhandledRejection", (reason) => addLog(`[Fatal] Unhandled rejection: ${reason}`));
-  process.on("uncaughtException", (err) => addLog(`[Fatal] Uncaught exception: ${err.message}`));
+  process.on("SIGTERM", () => {
+    shutdownWithAlert("SIGTERM: 호스팅 서버가 프로세스 종료 신호를 보냄", 0).catch(() => process.exit(0));
+  });
+  process.on("SIGINT", () => {
+    shutdownWithAlert("SIGINT: 서버가 수동 종료됨", 0).catch(() => process.exit(0));
+  });
+  process.on("unhandledRejection", (reason) => {
+    addLog(`[Fatal] Unhandled rejection: ${reason}`);
+    notifyServerDown(`Unhandled rejection: ${String(reason).slice(0, 300)}`).catch(() => {});
+  });
+  process.on("uncaughtException", (err) => {
+    addLog(`[Fatal] Uncaught exception: ${err.message}`);
+    shutdownWithAlert(`Uncaught exception: ${err.message}`, 1).catch(() => process.exit(1));
+  });
 
   await connectMongo();
   mongoose.connection.on("error", (err) => addLog(`[MongoDB] Runtime error: ${err.message}`));
