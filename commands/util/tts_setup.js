@@ -5,15 +5,23 @@ import {
   StringSelectMenuBuilder,
 } from "discord.js";
 import NatsumiTtsPreference from "../../models/NatsumiTtsPreference.js";
-import { DEFAULT_TTS_VOICE, TTS_VOICES } from "../../utils/ttsVoices.js";
+import { DEFAULT_TTS_VOICE, TTS_VOICES, fetchFishAudioVoiceOptions } from "../../utils/ttsVoices.js";
 
-const buildVoiceOptions = (pref) => TTS_VOICES.slice(0, 25).map((voice) => ({
+const toSelectOption = (voice, pref) => ({
   label: voice.label,
-  value: voice.name,
+  value: voice.value?.startsWith?.("fish:") ? voice.value : voice.name,
   description: voice.description.slice(0, 100),
-  emoji: voice.emoji,
-  default: (pref?.voiceName || DEFAULT_TTS_VOICE.name) === voice.name,
-}));
+  ...(voice.emoji ? { emoji: voice.emoji } : {}),
+  default: (pref?.voiceId && pref.voiceId === voice.voiceId) || (pref?.voiceName || DEFAULT_TTS_VOICE.name) === voice.name,
+});
+
+const buildVoiceOptions = async (pref) => {
+  const staticVoices = TTS_VOICES.slice(0, 25).map((voice) => toSelectOption(voice, pref));
+  if (!(process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY)) return staticVoices;
+
+  const fishVoices = await fetchFishAudioVoiceOptions({ limit: 25 }).catch(() => []);
+  return (fishVoices.length ? fishVoices.map((voice) => toSelectOption(voice, pref)) : staticVoices).slice(0, 25);
+};
 
 export const buildTtsSettingsView = async (interaction) => {
   const pref = await NatsumiTtsPreference.findOne({
@@ -23,11 +31,14 @@ export const buildTtsSettingsView = async (interaction) => {
 
   const embed = new EmbedBuilder()
     .setColor("#5865f2")
-    .setAuthor({ name: "카미봇 설정", iconURL: interaction.client.user.displayAvatarURL() })
+    .setAuthor({ name: "나츠미 설정", iconURL: interaction.client.user.displayAvatarURL() })
     .setTitle("TTS 목소리 바꾸기")
     .setDescription([
       "음성 채널에 들어간 상태로 TTS 채널에 채팅을 치면 나츠미가 들어와서 읽어줘요.",
       "아래 메뉴에서 목소리를 고르면 다음 TTS부터 바로 그 설정을 사용해요.",
+      process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY
+        ? "Fish Audio API가 연결되어 있어서 Fish Audio 보이스 목록을 우선 보여줘요."
+        : "Fish Audio API 키가 없으면 기본 보이스 목록을 보여줘요.",
       "",
       `현재 목소리: **${pref?.voiceName || DEFAULT_TTS_VOICE.name}**`,
     ].join("\n"));
@@ -36,7 +47,7 @@ export const buildTtsSettingsView = async (interaction) => {
     new StringSelectMenuBuilder()
       .setCustomId("NatsumiTts_voice")
       .setPlaceholder("TTS 목소리 선택")
-      .addOptions(buildVoiceOptions(pref))
+      .addOptions(await buildVoiceOptions(pref))
   );
 
   return { embeds: [embed], components: [voiceSelect], ephemeral: true };

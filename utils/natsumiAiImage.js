@@ -73,8 +73,9 @@ export const buildImagePrompt = ({
   return parts.join("\n");
 };
 
-const MAX_INLINE_IMAGE_SIDE = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_SIDE || 1280);
-const MAX_INLINE_IMAGE_BYTES = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_BYTES || 1_500_000);
+const MAX_INLINE_IMAGE_SIDE = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_SIDE || 768);
+const MAX_INLINE_IMAGE_BYTES = Number(process.env.NATSUMI_IMAGE_INPUT_MAX_BYTES || 800_000);
+const IMAGE_MODEL_TIMEOUT_MS = Number(process.env.NATSUMI_IMAGE_MODEL_TIMEOUT_MS || 60_000);
 
 const fetchImageArrayBuffer = async (url) => {
   const signal = AbortSignal.timeout?.(Number(process.env.NATSUMI_IMAGE_FETCH_TIMEOUT_MS || 15000));
@@ -135,11 +136,14 @@ const createNanoBananaImage = async ({ prompt, image }) => {
   const imagePart = await imageUrlToInlineData(image);
   if (imagePart) parts.push(imagePart);
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: [{ role: "user", parts }],
-    config: { responseModalities: [Modality.TEXT, Modality.IMAGE] },
-  });
+  const response = await Promise.race([
+    ai.models.generateContent({
+      model,
+      contents: [{ role: "user", parts }],
+      config: { responseModalities: [Modality.TEXT, Modality.IMAGE] },
+    }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("IMAGE_MODEL_TIMEOUT")), IMAGE_MODEL_TIMEOUT_MS)),
+  ]);
 
   const responseParts = response?.candidates?.[0]?.content?.parts || response?.parts || [];
   const text = responseParts.find((part) => part.text)?.text || "이미지가 완성됐어요.";
@@ -185,10 +189,13 @@ export const runNatsumiImageGeneration = async ({ message, prompt, image, status
         content: "생각하는 시간이 조금 길어지고 있어요. 이미지 모델이 아직 처리 중이라 그대로 기다려볼게요.",
         components: [],
       }).catch(() => {});
-    }, Number(process.env.NATSUMI_IMAGE_SLOW_NOTICE_MS || 25000));
+    }, Number(process.env.NATSUMI_IMAGE_SLOW_NOTICE_MS || 10000));
   }
 
-  const nanoResult = await createNanoBananaImage({ prompt, image });
+  const nanoResult = await createNanoBananaImage({ prompt, image }).catch((error) => {
+    if (error.message !== "IMAGE_MODEL_TIMEOUT") throw error;
+    return { text: "이미지 모델 응답이 너무 늦어서 fallback을 확인할게요.", attachment: null, timedOut: true };
+  });
   if (thinkingTimer) clearTimeout(thinkingTimer);
   if (nanoResult?.attachment) {
     return waitMessage?.edit({
@@ -213,7 +220,9 @@ export const runNatsumiImageGeneration = async ({ message, prompt, image, status
   }
 
   return waitMessage?.edit({
-    content: "이미지 모델 키가 없거나 이미지 응답을 받지 못했어요. `NATSUMI_IMAGE_API_KEY` 또는 `GEMINI_API_KEY` 설정을 확인해주세요.",
+    content: nanoResult?.timedOut
+      ? "이미지 모델 응답이 너무 늦어졌어요. 입력 이미지를 더 작게 하거나 `NATSUMI_IMAGE_API_URL` fallback을 설정하면 더 빨라져요."
+      : "이미지 모델 키가 없거나 이미지 응답을 받지 못했어요. `NATSUMI_IMAGE_API_KEY` 또는 `GEMINI_API_KEY` 설정을 확인해주세요.",
     components: [],
   });
 };

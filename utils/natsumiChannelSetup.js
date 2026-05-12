@@ -83,9 +83,22 @@ const textChannels = [
       "여기에 대화하면 익명 닉네임으로 대화할 수 있어요.",
       "흔히 유동닉으로 불리는 `ㅇㅇ(000.000)` 형식의 닉네임이 무작위로 정해져요.",
       "`유동 IP 초기화`를 누르면 다음 익명 메시지부터 새 번호로 바뀌어요.",
-      "사용하기 전에 카미봇이 처리하는 정보에 관해 알고 계셔야 해요.",
+      "사용하기 전에 나츠미가 처리하는 정보에 관해 알고 계셔야 해요.",
     ].join("\n"),
     button: true,
+  },
+  {
+    key: "tts",
+    name: "📢｜나츠미-TTS",
+    topic: "여기에 채팅을 치면 나츠미가 현재 접속 중인 음성 채널에 들어와 읽어줘.",
+    title: "📢 나츠미 TTS",
+    description: [
+      "여기는 TTS 전용 채팅 채널이야.",
+      "음성 채널에 들어간 상태로 여기에 글을 쓰면 나츠미가 그 음성 채널에 들어와서 읽어줘.",
+      "",
+      "목소리는 `/tts설정`에서 고를 수 있어.",
+      "Fish Audio API 키가 설정되어 있으면 Fish Audio 목소리를 우선 사용하고, 없으면 기본 무료 TTS로 읽어.",
+    ].join("\n"),
   },
   {
     key: "chat",
@@ -101,7 +114,6 @@ const textChannels = [
 ];
 
 const voiceChannels = [
-  { key: "tts", name: "📢｜여우-TTS" },
   { key: "tempVoice", name: "🔊｜새-음성방" },
 ];
 
@@ -126,11 +138,52 @@ const sendGuide = async (channel, item) => {
   if (message) await message.pin().catch(() => {});
 };
 
+const ensureTextTtsChannel = async (guild, setup) => {
+  const channels = setup?.featureChannels || {};
+  const currentTts = channels.tts ? await guild.channels.fetch(channels.tts).catch(() => null) : null;
+  if (currentTts?.type === ChannelType.GuildText) return { setup, repaired: false };
+
+  const featureCategory = setup?.featureCategoryId
+    ? await guild.channels.fetch(setup.featureCategoryId).catch(() => null)
+    : null;
+  const ttsItem = textChannels.find((item) => item.key === "tts");
+  const channel = await guild.channels.create({
+    name: ttsItem.name,
+    type: ChannelType.GuildText,
+    parent: featureCategory?.id || null,
+    topic: ttsItem.topic,
+    reason: "나츠미 TTS 텍스트 채널 보정",
+  });
+  await sendGuide(channel, ttsItem);
+
+  if (currentTts?.type === ChannelType.GuildVoice && currentTts.deletable) {
+    await currentTts.delete("나츠미 TTS는 텍스트 채널로 전환됨").catch(() => {});
+  }
+
+  const nextText = Array.from(new Set([...(setup?.textChannelIds || []), channel.id]));
+  const nextVoice = (setup?.voiceChannelIds || []).filter((id) => id !== channels.tts);
+  const nextSetup = await NatsumiGuildSetup.findOneAndUpdate(
+    { guildId: guild.id },
+    {
+      guildId: guild.id,
+      featureChannels: { ...channels, tts: channel.id },
+      textChannelIds: nextText,
+      voiceChannelIds: nextVoice,
+    },
+    { upsert: true, new: true }
+  );
+
+  return { setup: nextSetup, repaired: true };
+};
+
 export const createNatsumiChannels = async (guild, userId = null) => {
   const existing = await NatsumiGuildSetup.findOne({ guildId: guild.id }).lean();
   if (existing?.featureCategoryId) {
     const category = await guild.channels.fetch(existing.featureCategoryId).catch(() => null);
-    if (category) return { already: true, setup: existing };
+    if (category) {
+      const repaired = await ensureTextTtsChannel(guild, existing);
+      return { already: true, repaired: repaired.repaired, setup: repaired.setup };
+    }
   }
 
   const everyone = guild.roles.everyone;

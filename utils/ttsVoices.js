@@ -39,3 +39,36 @@ export const getFishReferenceId = (voiceName) => {
   if (voice.description.includes("남성")) return process.env.NATSUMI_FISH_REF_MALE || "802e3bc2b27e49c2995d23ef70e6ac89";
   return process.env.NATSUMI_FISH_REF_FEMALE || "8ef4a238714b45718ce04243307c57a7";
 };
+
+export const isStaticTtsVoiceId = (voiceId) => {
+  return TTS_VOICES.some((voice) => voice.value === voiceId || voice.name === voiceId);
+};
+
+export const fetchFishAudioVoiceOptions = async ({ limit = 25 } = {}) => {
+  const url = new URL("https://api.fish.audio/model");
+  url.searchParams.set("page_size", String(Math.min(Math.max(limit, 1), 50)));
+  url.searchParams.set("page_number", "1");
+  url.searchParams.set("sort_by", "task_count");
+
+  const apiKey = process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY;
+  const response = await fetch(url, {
+    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+  });
+  if (!response.ok) throw new Error(`Fish voices ${response.status}`);
+
+  const data = await response.json();
+  return (data.items || [])
+    .filter((voice) => voice?._id && voice?.title)
+    .map((voice) => {
+      const languages = (voice.languages || []).join(", ") || "language unknown";
+      const tags = (voice.tags || []).slice(0, 2).join(" ");
+      const description = [languages, tags].filter(Boolean).join(" · ").slice(0, 100);
+      return {
+        label: String(voice.title).slice(0, 100),
+        name: String(voice.title),
+        value: `fish:${voice._id}`,
+        voiceId: voice._id,
+        description: description || `Fish Audio · ${voice.task_count || 0} uses`,
+      };
+    });
+};

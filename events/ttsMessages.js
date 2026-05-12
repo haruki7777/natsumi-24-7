@@ -5,9 +5,10 @@ import { speakMessage } from "../utils/voiceTts.js";
 const isTtsChannel = (message, setup) => {
   const configuredTtsId = setup?.featureChannels?.tts;
   if (configuredTtsId && message.channel.id === configuredTtsId) return true;
+  if (configuredTtsId) return false;
 
   const name = String(message.channel.name || "").toLowerCase();
-  return name.includes("tts") || name.includes("음성") || name.includes("읽어");
+  return message.channel?.type === ChannelType.GuildText && (name.includes("tts") || name.includes("읽어"));
 };
 
 const getTargetVoiceChannel = (message) => {

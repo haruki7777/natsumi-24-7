@@ -10,7 +10,7 @@ export default {
     .addSubcommand((sub) =>
       sub
         .setName("자동셋업")
-        .setDescription("카미봇처럼 나츠미 전용 채널을 자동으로 생성합니다.")
+        .setDescription("나츠미 전용 채널을 자동으로 생성하거나 보정합니다.")
     )
     .addSubcommandGroup((group) =>
       group
@@ -34,7 +34,10 @@ export default {
       const result = await createNatsumiChannels(interaction.guild, interaction.user.id);
 
       if (result.already) {
-        return interaction.editReply("이미 나츠미 채널 구성이 만들어져 있어. 또 만들면 복잡해지거든 😤");
+        return interaction.editReply(result.repaired
+          ? "이미 나츠미 채널 구성이 있어서, TTS를 텍스트 채널로 보정했어."
+          : "이미 나츠미 채널 구성이 만들어져 있어. 또 만들면 복잡해지거든 😤"
+        );
       }
 
       return interaction.editReply([

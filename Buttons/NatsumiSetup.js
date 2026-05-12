@@ -29,7 +29,11 @@ export default {
     try {
       const result = await createNatsumiChannels(interaction.guild, interaction.user.id);
       if (result.already) {
-        return interaction.editReply({ content: "이미 나츠미 채널 구성이 만들어져 있어. 또 만들면 복잡해지거든 😼" });
+        return interaction.editReply({
+          content: result.repaired
+            ? "이미 나츠미 채널 구성이 있어서, TTS를 텍스트 채널로 보정했어."
+            : "이미 나츠미 채널 구성이 만들어져 있어. 또 만들면 복잡해지거든 😼",
+        });
       }
 
       return interaction.editReply({

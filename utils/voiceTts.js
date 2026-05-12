@@ -11,7 +11,7 @@ import {
 } from "@discordjs/voice";
 import ffmpegPath from "ffmpeg-static";
 import NatsumiTtsPreference from "../models/NatsumiTtsPreference.js";
-import { getFishReferenceId } from "./ttsVoices.js";
+import { getFishReferenceId, isStaticTtsVoiceId } from "./ttsVoices.js";
 
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
 
@@ -54,12 +54,14 @@ const fetchFishAudioBuffer = async (text, pref = null) => {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      model: process.env.NATSUMI_FISH_AUDIO_MODEL || "s2",
+      model: process.env.NATSUMI_FISH_AUDIO_MODEL || "s2-pro",
     },
     body: JSON.stringify({
       text,
       format: "mp3",
-      reference_id: getFishReferenceId(pref?.voiceName || pref?.voiceId),
+      reference_id: pref?.voiceId && !isStaticTtsVoiceId(pref.voiceId)
+        ? pref.voiceId
+        : getFishReferenceId(pref?.voiceName || pref?.voiceId),
     }),
   });
 
