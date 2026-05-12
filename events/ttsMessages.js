@@ -4,14 +4,42 @@ import { speakMessage } from "../utils/voiceTts.js";
 
 const compact = (value) => String(value || "").replace(/\s+/g, "").toLowerCase();
 
-const isTtsChannel = (message, setup) => {
-  const configuredTtsId = setup?.featureChannels?.tts;
-  if (configuredTtsId && message.channel.id === configuredTtsId) return true;
-  if (configuredTtsId) return false;
+const isTtsNamedChannel = (channel) => {
+  if (channel?.type !== ChannelType.GuildText) return false;
+  const name = compact(channel.name);
+  return name.includes("tts")
+    || name.includes("rrs")
+    || name.includes("읽어")
+    || name.includes("음성")
+    || name.includes("목소리");
+};
 
-  const name = compact(message.channel.name);
-  return message.channel?.type === ChannelType.GuildText
-    && (name.includes("tts") || name.includes("rrs") || name.includes("읽어") || name.includes("음성"));
+const resolveTtsChannelMatch = (message, setup) => {
+  const configuredTtsId = setup?.featureChannels?.tts;
+  if (!configuredTtsId) return { ok: isTtsNamedChannel(message.channel), shouldRepair: false };
+  if (message.channel.id === configuredTtsId) return { ok: true, shouldRepair: false };
+
+  const configured = message.guild.channels.cache.get(configuredTtsId);
+  const configuredLooksUsable = configured?.type === ChannelType.GuildText;
+  const currentLooksTts = isTtsNamedChannel(message.channel);
+
+  if (!configuredLooksUsable && currentLooksTts) {
+    return { ok: true, shouldRepair: true };
+  }
+
+  return { ok: false, shouldRepair: false };
+};
+
+const repairTtsChannelId = async (guildId, channelId) => {
+  await NatsumiGuildSetup.findOneAndUpdate(
+    { guildId },
+    {
+      $set: { "featureChannels.tts": channelId },
+      $addToSet: { textChannelIds: channelId },
+      $pull: { voiceChannelIds: channelId },
+    },
+    { upsert: false }
+  ).catch(() => {});
 };
 
 const getTargetVoiceChannel = (message) => {
@@ -27,7 +55,9 @@ export default {
     if (!message.content?.trim()) return;
 
     const setup = await NatsumiGuildSetup.findOne({ guildId: message.guild.id }).lean().catch(() => null);
-    if (!isTtsChannel(message, setup)) return;
+    const match = resolveTtsChannelMatch(message, setup);
+    if (!match.ok) return;
+    if (match.shouldRepair) await repairTtsChannelId(message.guild.id, message.channel.id);
 
     const voiceChannel = getTargetVoiceChannel(message);
     if (!voiceChannel) {
@@ -40,9 +70,7 @@ export default {
 
     try {
       const spoken = await speakMessage({ message, voiceChannel });
-      if (!spoken) {
-        await message.react("⚠️").catch(() => {});
-      }
+      if (!spoken) await message.react("⚠️").catch(() => {});
     } catch (error) {
       console.error("[NatsumiTTS] failed:", error);
       await message.react("⚠️").catch(() => {});

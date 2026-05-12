@@ -12,7 +12,7 @@ import {
 import ffmpegPath from "ffmpeg-static";
 import NatsumiTtsPreference from "../models/NatsumiTtsPreference.js";
 import { GUILD_TTS_USER_ID } from "../commands/util/tts_setup.js";
-import { getFishReferenceId, isStaticTtsVoiceId } from "./ttsVoices.js";
+import { getFishReferenceId, getTtsVoiceByValue, isStaticTtsVoiceId } from "./ttsVoices.js";
 
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
 
@@ -44,6 +44,22 @@ const fetchStreamElementsBuffer = async (text, voice = null) => {
     signal: AbortSignal.timeout?.(20000),
   });
   if (!response.ok) throw new Error(`TTS API ${response.status}`);
+  return Buffer.from(await response.arrayBuffer());
+};
+
+const fetchTranslateTtsBuffer = async (text, pref = null) => {
+  const voice = getTtsVoiceByValue(pref?.voiceName || pref?.voiceId);
+  const url = new URL("https://translate.google.com/translate_tts");
+  url.searchParams.set("ie", "UTF-8");
+  url.searchParams.set("client", "tw-ob");
+  url.searchParams.set("tl", voice.locale === "ja" ? "ja" : "ko");
+  url.searchParams.set("q", text);
+
+  const response = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 NatsumiDiscordBot/1.0" },
+    signal: AbortSignal.timeout?.(20000),
+  });
+  if (!response.ok) throw new Error(`Translate TTS API ${response.status}`);
   return Buffer.from(await response.arrayBuffer());
 };
 
@@ -79,11 +95,16 @@ const fetchTtsBuffer = async (text, pref = null) => {
       const fishBuffer = await fetchFishAudioBuffer(text, pref);
       if (fishBuffer) return fishBuffer;
     } catch (error) {
-      if (provider === "fish") throw error;
+      if (provider === "fish" && process.env.NATSUMI_TTS_STRICT_FISH === "true") throw error;
       console.warn("[NatsumiTTS] Fish Audio failed, falling back to StreamElements:", error.message);
     }
   }
-  return fetchStreamElementsBuffer(text, pref?.voiceId || null);
+  try {
+    return await fetchStreamElementsBuffer(text, pref?.voiceId || null);
+  } catch (error) {
+    console.warn("[NatsumiTTS] StreamElements failed, falling back to translate TTS:", error.message);
+    return fetchTranslateTtsBuffer(text, pref);
+  }
 };
 
 const waitForPlayerIdle = (player) => new Promise((resolve, reject) => {
@@ -101,7 +122,11 @@ const waitForPlayerIdle = (player) => new Promise((resolve, reject) => {
 const playBuffer = async ({ message, voiceChannel, buffer }) => {
   const me = message.guild.members.me || await message.guild.members.fetchMe().catch(() => null);
   const permissions = voiceChannel.permissionsFor(me);
-  if (!permissions?.has(PermissionsBitField.Flags.Connect) || !permissions?.has(PermissionsBitField.Flags.Speak)) {
+  if (
+    !permissions?.has(PermissionsBitField.Flags.ViewChannel)
+    || !permissions?.has(PermissionsBitField.Flags.Connect)
+    || !permissions?.has(PermissionsBitField.Flags.Speak)
+  ) {
     await message.reply({
       content: "나츠미가 그 음성채널에 들어가거나 말할 권한이 없어요.",
       allowedMentions: { repliedUser: false },
