@@ -6,7 +6,7 @@ import {
   StringSelectMenuBuilder,
 } from "discord.js";
 import NatsumiTtsPreference from "../../models/NatsumiTtsPreference.js";
-import { DEFAULT_TTS_VOICE, TTS_VOICES, fetchFishAudioVoiceOptions } from "../../utils/ttsVoices.js";
+import { DEFAULT_TTS_VOICE, getTtsVoicesByCategory } from "../../utils/ttsVoices.js";
 
 export const GUILD_TTS_USER_ID = "__guild_default__";
 
@@ -14,17 +14,17 @@ const categoryOptions = [
   {
     label: "한국어 보이스",
     value: "ko",
-    description: "한국어 목소리 5개를 제목과 스타일로 보여줘요.",
+    description: "한국어 애니보이스 10개를 보여줘요.",
   },
   {
     label: "일본어 보이스",
     value: "ja",
-    description: "일본어 목소리 5개를 제목과 스타일로 보여줘요.",
+    description: "일본어 애니보이스 10개를 보여줘요.",
   },
   {
     label: "기본 보이스",
     value: "static",
-    description: "바로 사용할 수 있는 기본 목소리 5개예요.",
+    description: "한국어와 일본어 추천 보이스를 섞어서 보여줘요.",
   },
 ];
 
@@ -56,8 +56,8 @@ export const buildTtsCategoryView = async (interaction) => {
     .setTitle("서버 TTS 목소리 설정")
     .setDescription([
       "관리자만 서버 TTS 기본 목소리를 바꿀 수 있어요.",
-      "카테고리를 고르면 제목과 스타일이 있는 목소리 5개를 보여줘요.",
-      "TTS 채팅방에서 사용자가 말하면, 나츠미가 그 사용자의 음성채널로 들어가 읽어줘요.",
+      "카테고리를 고르면 한글 이름과 설명이 붙은 목소리를 보여줘요.",
+      "TTS 채팅방에 글을 쓰면 나츠미가 그 사용자의 음성채널로 들어가 읽어줘요.",
       "",
       `현재 서버 목소리: **${pref?.voiceName || DEFAULT_TTS_VOICE.name}**`,
     ].join("\n"));
@@ -74,27 +74,12 @@ export const buildTtsCategoryView = async (interaction) => {
 
 export const buildTtsVoiceView = async (interaction, category) => {
   const pref = await getGuildTtsPreference(interaction.guildId);
-  const hasFishKey = Boolean(process.env.FISH_API_KEY || process.env.NATSUMI_FISH_AUDIO_API_KEY);
-  let voices = TTS_VOICES;
   let title = "기본 보이스";
 
-  if (category === "ko") {
-    title = "한국어 보이스";
-    voices = hasFishKey
-      ? await fetchFishAudioVoiceOptions({ limit: 5, locale: "한국어" }).catch(() => [])
-      : [];
-  } else if (category === "ja") {
-    title = "일본어 보이스";
-    voices = hasFishKey
-      ? await fetchFishAudioVoiceOptions({ limit: 5, locale: "일본어" }).catch(() => [])
-      : [];
-  }
+  if (category === "ko") title = "한국어 보이스";
+  else if (category === "ja") title = "일본어 보이스";
 
-  if (!voices.length) voices = TTS_VOICES.filter((voice) => {
-    if (category === "ko") return voice.locale === "ko";
-    if (category === "ja") return voice.locale === "ja";
-    return true;
-  });
+  const voices = getTtsVoicesByCategory(category);
 
   const embed = new EmbedBuilder()
     .setColor("#5865f2")
@@ -102,7 +87,7 @@ export const buildTtsVoiceView = async (interaction, category) => {
     .setTitle(`${title} 선택`)
     .setDescription([
       "아래 목록에서 서버 전체가 사용할 TTS 목소리를 골라주세요.",
-      "목록은 최대 5개만 보여줘서 고르기 쉽게 정리했어요.",
+      "이상한 영어/다른 언어 제목이 나오지 않도록 고정 한글 목록만 보여줘요.",
       "",
       `현재 서버 목소리: **${pref?.voiceName || DEFAULT_TTS_VOICE.name}**`,
     ].join("\n"));
@@ -111,7 +96,7 @@ export const buildTtsVoiceView = async (interaction, category) => {
     new StringSelectMenuBuilder()
       .setCustomId(`NatsumiTts_voice_${category}`)
       .setPlaceholder(`${title} 선택`)
-      .addOptions(voices.slice(0, 5).map((voice) => toSelectOption(voice, pref)))
+      .addOptions(voices.map((voice) => toSelectOption(voice, pref)))
   );
 
   const backSelect = new ActionRowBuilder().addComponents(
@@ -135,6 +120,7 @@ export default {
       return interaction.reply({ content: "이 설정은 서버 관리자만 사용할 수 있어요.", ephemeral: true });
     }
 
-    return interaction.reply(await buildTtsCategoryView(interaction));
+    await interaction.deferReply({ ephemeral: true });
+    return interaction.editReply(await buildTtsCategoryView(interaction));
   },
 };

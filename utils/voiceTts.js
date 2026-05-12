@@ -41,6 +41,7 @@ const buildStreamElementsTtsUrl = (text, voice = null) => {
 const fetchStreamElementsBuffer = async (text, voice = null) => {
   const response = await fetch(buildStreamElementsTtsUrl(text, voice), {
     headers: { "User-Agent": "NatsumiDiscordBot/1.0" },
+    signal: AbortSignal.timeout?.(20000),
   });
   if (!response.ok) throw new Error(`TTS API ${response.status}`);
   return Buffer.from(await response.arrayBuffer());
@@ -64,6 +65,7 @@ const fetchFishAudioBuffer = async (text, pref = null) => {
         ? pref.voiceId
         : getFishReferenceId(pref?.voiceName || pref?.voiceId),
     }),
+    signal: AbortSignal.timeout?.(30000),
   });
 
   if (!response.ok) throw new Error(`Fish Audio TTS API ${response.status}`);
@@ -100,6 +102,10 @@ const playBuffer = async ({ message, voiceChannel, buffer }) => {
   const me = message.guild.members.me || await message.guild.members.fetchMe().catch(() => null);
   const permissions = voiceChannel.permissionsFor(me);
   if (!permissions?.has(PermissionsBitField.Flags.Connect) || !permissions?.has(PermissionsBitField.Flags.Speak)) {
+    await message.reply({
+      content: "나츠미가 그 음성채널에 들어가거나 말할 권한이 없어요.",
+      allowedMentions: { repliedUser: false },
+    }).then((reply) => setTimeout(() => reply.delete().catch(() => {}), 7000)).catch(() => {});
     return false;
   }
 

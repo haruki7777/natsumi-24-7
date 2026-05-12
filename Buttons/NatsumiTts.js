@@ -5,15 +5,9 @@ import {
   buildTtsVoiceView,
   isTtsAdmin,
 } from "../commands/util/tts_setup.js";
-import { TTS_VOICES, fetchFishAudioVoiceOptions } from "../utils/ttsVoices.js";
+import { TTS_VOICES } from "../utils/ttsVoices.js";
 
-const findVoice = async (selectedValue, category) => {
-  if (selectedValue?.startsWith?.("fish:")) {
-    const locale = category === "ko" ? "한국어" : category === "ja" ? "일본어" : null;
-    const fishVoices = await fetchFishAudioVoiceOptions({ limit: 5, locale }).catch(() => []);
-    return fishVoices.find((voice) => voice.value === selectedValue);
-  }
-
+const findVoice = (selectedValue) => {
   return TTS_VOICES.find((voice) => voice.name === selectedValue || voice.value === selectedValue);
 };
 
@@ -40,7 +34,7 @@ export default {
       await interaction.deferUpdate();
       const category = parts[2] || "static";
       const selectedValue = interaction.values?.[0];
-      const voice = await findVoice(selectedValue, category) || TTS_VOICES[0];
+      const voice = findVoice(selectedValue) || TTS_VOICES[0];
 
       await NatsumiTtsPreference.findOneAndUpdate(
         { guildId: interaction.guildId, userId: GUILD_TTS_USER_ID },
