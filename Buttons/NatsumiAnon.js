@@ -84,6 +84,13 @@ const sendAnonymousMessage = async (interaction, content) => {
   return interaction.channel.send({ embeds: [embed], components: buildAnonButtons() });
 };
 
+const isAnonymousMessageCard = (message) => {
+  const embed = message?.embeds?.[0];
+  const authorName = String(embed?.author?.name || "");
+  const footerText = String(embed?.footer?.text || "");
+  return /^ㅇㅇ\(\d{1,3}\.\d{1,3}\)$/.test(authorName) && footerText.includes("익명 가면방");
+};
+
 export default {
   name: "NatsumiAnon",
 
@@ -101,6 +108,9 @@ export default {
     }
 
     if (interaction.isButton() && interaction.customId === "NatsumiAnon_open") {
+      if (isAnonymousMessageCard(interaction.message)) {
+        await interaction.message.delete().catch(() => {});
+      }
       return openModal(interaction);
     }
 
