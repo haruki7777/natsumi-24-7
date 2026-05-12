@@ -80,11 +80,12 @@ const textChannels = [
     topic: "버튼이나 일반 메시지로 익명 메시지를 보낼 수 있는 채널이야.",
     title: "🎭 나츠미 익명 가면방",
     description: [
-      "여기서는 익명으로 메시지를 보낼 수 있어.",
-      "아래 버튼을 누르면 모달로 익명 메시지를 작성할 수 있고, 일반 메시지를 보내도 나츠미가 익명 임베드로 바꿔줘.",
+      "익명으로 대화해 보세요! 🤫",
       "",
-      "원본 메시지는 가능한 경우 삭제하고, 익명 이름으로 다시 보내서 가면을 유지해줄게 😼",
-      "그래도 규칙 위반은 관리자에게 들킬 수 있으니까 착각하지 마.",
+      "여기에 대화하면 익명 닉네임으로 대화할 수 있어요.",
+      "흔히 유동닉으로 불리는 `ㅇㅇ(000.000)` 형식의 닉네임이 무작위로 정해져요.",
+      "`유동 IP 초기화`를 누르면 다음 익명 메시지부터 새 번호로 바뀌어요.",
+      "사용하기 전에 카미봇이 처리하는 정보에 관해 알고 계셔야 해요.",
     ].join("\n"),
     button: true,
   },
@@ -113,9 +114,14 @@ const buildGuideComponents = (item) => {
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("NatsumiAnon_open")
-        .setLabel("익명 메시지 쓰기")
+        .setLabel("새 메시지 작성")
         .setEmoji("🎭")
-        .setStyle(ButtonStyle.Primary)
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("NatsumiAnon_reset")
+        .setLabel("유동 IP 초기화")
+        .setEmoji("🌀")
+        .setStyle(ButtonStyle.Secondary)
     ),
   ];
 };

@@ -8,6 +8,7 @@ import {
   TextInputStyle,
 } from "discord.js";
 import NatsumiAnonIdentity from "../models/NatsumiAnonIdentity.js";
+import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
 
 const randomAnonIp = () => {
   const first = Math.floor(Math.random() * 223) + 1;
@@ -47,15 +48,10 @@ const buildAnonButtons = () => [
       .setEmoji("🎭")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId("NatsumiAnon_ip")
-      .setLabel("유동 IP")
-      .setEmoji("🌐")
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
       .setCustomId("NatsumiAnon_reset")
-      .setLabel("초기화")
+      .setLabel("유동 IP 초기화")
       .setEmoji("🌀")
-      .setStyle(ButtonStyle.Danger)
+      .setStyle(ButtonStyle.Secondary)
   ),
 ];
 
@@ -96,43 +92,22 @@ export default {
       return interaction.reply({ content: "서버에서만 사용할 수 있어 😤", ephemeral: true });
     }
 
-    if (interaction.isButton() && interaction.customId === "NatsumiAnon_open") {
-      await interaction.message.delete().catch(() => {});
-      return openModal(interaction);
-    }
-
-    if (interaction.isButton() && interaction.customId === "NatsumiAnon_ip") {
-      const anonIp = await getOrCreateAnonIp(interaction.guildId, interaction.user.id);
+    const setup = await NatsumiGuildSetup.findOne({ guildId: interaction.guildId }).lean().catch(() => null);
+    if (setup?.featureChannels?.anonymous && setup.featureChannels.anonymous !== interaction.channelId) {
       return interaction.reply({
-        content: `이번 유동 IP는 \`${anonIp}\` 이야. 이 IP로 익명 메시지를 보낼게.`,
+        content: "익명 가면방 버튼은 서버셋업에서 지정한 익명 채널에서만 사용할 수 있어.",
         ephemeral: true,
       });
     }
 
+    if (interaction.isButton() && interaction.customId === "NatsumiAnon_open") {
+      return openModal(interaction);
+    }
+
     if (interaction.isButton() && interaction.customId === "NatsumiAnon_reset") {
       const anonIp = await resetAnonIp(interaction.guildId, interaction.user.id);
-      const messages = await interaction.channel.messages.fetch({ limit: 50 }).catch(() => null);
-      const deletable = messages?.filter((msg) =>
-        msg.author.id === interaction.client.user.id &&
-        msg.embeds.some((embed) => String(embed.footer?.text || "").includes("익명"))
-      );
-      if (deletable?.size) {
-        await interaction.channel.bulkDelete(deletable, true).catch(async () => {
-          for (const msg of deletable.values()) await msg.delete().catch(() => {});
-        });
-      } else {
-        await interaction.message.delete().catch(() => {});
-      }
       return interaction.reply({
-        content: `익명방을 초기화했어. 새 유동 IP는 \`${anonIp}\` 이야.`,
-        components: [
-          new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("NatsumiAnon_open")
-              .setLabel("새 메시지 보내기")
-              .setStyle(ButtonStyle.Primary)
-          ),
-        ],
+        content: `유동 IP를 \`${anonIp}\` 로 초기화했어. 다음 익명 메시지부터 새 IP로 표시돼.`,
         ephemeral: true,
       });
     }

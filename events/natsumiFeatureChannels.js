@@ -1,6 +1,7 @@
 import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Events, PermissionFlagsBits } from "discord.js";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { GoogleGenAI, Modality } from "@google/genai";
+import NatsumiAnonIdentity from "../models/NatsumiAnonIdentity.js";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
 import ProcessedMessage from "../models/ProcessedMessage.js";
 import {
@@ -56,6 +57,8 @@ const getChannelFeatureKey = (channel, setup) => {
   for (const [key, id] of Object.entries(channels)) {
     if (id && id === channel.id) return key;
   }
+
+  if (Object.values(channels).some(Boolean)) return null;
 
   const name = String(channel.name || "").replace(/\s+/g, "").toLowerCase();
 
@@ -213,9 +216,24 @@ const handleSecretChannel = async (message) => {
   return true;
 };
 
-const anonymousNames = ["유동 여우", "가면 쓴 손님", "달빛 그림자", "익명 꼬리", "무명 손님", "비밀 목소리"];
-const randomAnonId = () => Math.floor(1000 + Math.random() * 9000);
-const randomAnonName = () => `${anonymousNames[Math.floor(Math.random() * anonymousNames.length)]}#${randomAnonId()}`;
+const randomAnonIp = () => {
+  const first = Math.floor(Math.random() * 223) + 1;
+  const second = Math.floor(Math.random() * 255);
+  return `${first}.${second}`;
+};
+
+const getOrCreateAnonIp = async (guildId, userId) => {
+  const existing = await NatsumiAnonIdentity.findOne({ guildId, userId }).lean().catch(() => null);
+  if (existing?.anonIp) return existing.anonIp;
+
+  const created = await NatsumiAnonIdentity.findOneAndUpdate(
+    { guildId, userId },
+    { guildId, userId, anonIp: randomAnonIp(), updatedAt: new Date() },
+    { upsert: true, new: true }
+  ).lean();
+
+  return created?.anonIp || randomAnonIp();
+};
 
 const buildAnonButtons = () => [
   new ActionRowBuilder().addComponents(
@@ -225,23 +243,24 @@ const buildAnonButtons = () => [
       .setEmoji("🎭")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId("NatsumiAnon_shuffle")
-      .setLabel("유동 ID 초기화")
+      .setCustomId("NatsumiAnon_reset")
+      .setLabel("유동 IP 초기화")
       .setEmoji("🌀")
       .setStyle(ButtonStyle.Secondary)
   ),
 ];
 
-const sendAnonymousMessage = async (channel, content, imageUrl = null) => {
+const sendAnonymousMessage = async ({ message, content, imageUrl = null }) => {
+  const anonIp = await getOrCreateAnonIp(message.guild.id, message.author.id);
   const embed = new EmbedBuilder()
     .setColor("#ff7aa8")
-    .setAuthor({ name: randomAnonName() })
+    .setAuthor({ name: `ㅇㅇ(${anonIp})` })
     .setDescription(content || "첨부 이미지")
-    .setFooter({ text: "나츠미 익명 가면방 · 실제 IP가 아닌 유동 익명 ID입니다" })
+    .setFooter({ text: "나츠미 익명 가면방 · 실제 IP가 아닌 가상 유동 ID입니다" })
     .setTimestamp();
 
   if (imageUrl) embed.setImage(imageUrl);
-  return channel.send({ embeds: [embed], components: buildAnonButtons() }).catch(() => null);
+  return message.channel.send({ embeds: [embed], components: buildAnonButtons() }).catch(() => null);
 };
 
 const handleAnonymousChannel = async (message) => {
@@ -251,7 +270,7 @@ const handleAnonymousChannel = async (message) => {
   if (!content && !image) return false;
 
   await message.delete().catch(() => {});
-  await sendAnonymousMessage(message.channel, content, image?.url || null);
+  await sendAnonymousMessage({ message, content, imageUrl: image?.url || null });
   return true;
 };
 
