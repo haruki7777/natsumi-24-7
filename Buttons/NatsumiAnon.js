@@ -31,7 +31,12 @@ const getOrCreateAnonIp = async (guildId, userId) => {
 };
 
 const resetAnonIp = async (guildId, userId) => {
-  const anonIp = randomAnonIp();
+  const existing = await NatsumiAnonIdentity.findOne({ guildId, userId }).lean().catch(() => null);
+  let anonIp = randomAnonIp();
+  for (let i = 0; i < 5 && existing?.anonIp === anonIp; i += 1) {
+    anonIp = randomAnonIp();
+  }
+
   await NatsumiAnonIdentity.findOneAndUpdate(
     { guildId, userId },
     { guildId, userId, anonIp, updatedAt: new Date() },
