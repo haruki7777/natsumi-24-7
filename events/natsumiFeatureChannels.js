@@ -207,14 +207,8 @@ const handleEmojiChannel = async (message) => {
 const handleSecretChannel = async (message) => {
   const rawDeleteMs = Number(process.env.NATSUMI_SECRET_DELETE_MS || 15_000);
   const deleteMs = rawDeleteMs > 0 && rawDeleteMs < 1000 ? rawDeleteMs * 1000 : rawDeleteMs;
-  const notice = await message.reply({
-    content: `🌙 이 메시지는 ${Math.round(deleteMs / 1000)}초 뒤 사라져. 비밀은 오래 남기면 안 되거든 😤`,
-    allowedMentions: { repliedUser: false },
-  }).catch(() => null);
-
   setTimeout(() => {
     message.delete().catch(() => {});
-    notice?.delete?.().catch(() => {});
   }, deleteMs);
   return true;
 };

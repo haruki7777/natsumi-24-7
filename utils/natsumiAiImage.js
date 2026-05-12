@@ -56,6 +56,22 @@ export const buildAiImageActionRows = (messageId) => [
   ),
 ];
 
+export const buildImagePrompt = ({
+  prompt = "",
+  negative = "",
+  similarity = "",
+  resolution = "",
+} = {}) => {
+  const parts = [
+    prompt.trim() || "Convert the attached image into a polished anime-style image while preserving the main subject.",
+  ];
+
+  if (similarity) parts.push(`Similarity to original image: ${similarity}%.`);
+  if (resolution) parts.push(`Target output resolution long side: ${resolution}p.`);
+  if (negative.trim()) parts.push(`Negative prompt, avoid these keywords: ${negative.trim()}.`);
+  return parts.join("\n");
+};
+
 const imageUrlToInlineData = async (image) => {
   if (!image?.url) return null;
 
@@ -127,7 +143,18 @@ export const runNatsumiImageGeneration = async ({ message, prompt, image, status
     allowedMentions: { repliedUser: false },
   }).catch(() => null);
 
+  let thinkingTimer = null;
+  if (waitMessage) {
+    thinkingTimer = setTimeout(() => {
+      waitMessage.edit({
+        content: "생각하는 시간이 조금 길어지고 있어요. 이미지 모델이 아직 처리 중이라 그대로 기다려볼게요.",
+        components: [],
+      }).catch(() => {});
+    }, Number(process.env.NATSUMI_IMAGE_SLOW_NOTICE_MS || 25000));
+  }
+
   const nanoResult = await createNanoBananaImage({ prompt, image });
+  if (thinkingTimer) clearTimeout(thinkingTimer);
   if (nanoResult?.attachment) {
     return waitMessage?.edit({
       content: nanoResult.text?.slice(0, 1800) || "완성됐어요.",

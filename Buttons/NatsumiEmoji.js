@@ -7,7 +7,7 @@ export default {
     if (!interaction.isButton()) return;
 
     const [, mode, messageId] = interaction.customId.split("_");
-    if (!["crop", "pad"].includes(mode) || !messageId) return;
+    if (!["crop", "pad", "raw"].includes(mode) || !messageId) return;
 
     if (!interaction.guild) {
       return interaction.reply({ content: "서버에서만 사용할 수 있어요.", ephemeral: true });

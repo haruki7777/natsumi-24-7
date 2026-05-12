@@ -58,6 +58,15 @@ const markProcessed = async (message) => {
   ).catch(() => {});
 };
 
+const claimProcessed = async (message) => {
+  try {
+    await ProcessedMessage.create({ messageId: message.id });
+    return true;
+  } catch (error) {
+    return error?.code !== 11000 ? false : false;
+  }
+};
+
 const isAlreadyProcessedInDb = async (message) => {
   try {
     const existingDoc = await ProcessedMessage.findOneAndUpdate(
@@ -228,7 +237,6 @@ const shouldBlockAiCall = (message, setup, isCalled) => {
 };
 
 const replyAiBlocked = async (message, setup) => {
-  await markProcessed(message);
   const aiChannels = setup?.aiChannelIds || [];
   const aiMention = aiChannels.length ? aiChannels.map((id) => `<#${id}>`).join(", ") : "아직 미설정";
   const guide = aiChannels.length
@@ -257,7 +265,7 @@ export default {
 
     if (message.guild && isCalled) {
       if (!cacheAdd(localProcessedCache, message.id)) return;
-      if (await isAlreadyProcessedInDb(message)) return;
+      if (!(await claimProcessed(message))) return;
       dbProcessed = true;
 
       const adminHandled = await handleNatsumiAdminMode(message, natsumiSetup);

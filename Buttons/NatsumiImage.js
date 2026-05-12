@@ -1,5 +1,5 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from "discord.js";
-import { runNatsumiImageGeneration } from "../utils/natsumiAiImage.js";
+import { buildImagePrompt, runNatsumiImageGeneration } from "../utils/natsumiAiImage.js";
 
 const getFirstImage = (message) => {
   return message.attachments.find((file) => {
@@ -33,6 +33,32 @@ export default {
               .setStyle(TextInputStyle.Paragraph)
               .setRequired(true)
               .setMaxLength(1000)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("negative")
+              .setLabel("제외할 프롬프트 키워드")
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(false)
+              .setMaxLength(1000)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("similarity")
+              .setLabel("원본 그림과의 유사도(%)")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+              .setPlaceholder("예: 50")
+              .setMaxLength(3)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId("resolution")
+              .setLabel("해상도 장축")
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+              .setPlaceholder("예: 768, 1080, 1440")
+              .setMaxLength(5)
           )
         );
       return interaction.showModal(modal);
@@ -44,7 +70,12 @@ export default {
       const image = sourceMessage ? getFirstImage(sourceMessage) : null;
       if (!sourceMessage || !image) return interaction.editReply("원본 이미지를 찾지 못했어요. 다시 올려주세요.");
 
-      const prompt = interaction.fields.getTextInputValue("prompt");
+      const prompt = buildImagePrompt({
+        prompt: interaction.fields.getTextInputValue("prompt"),
+        negative: interaction.fields.getTextInputValue("negative"),
+        similarity: interaction.fields.getTextInputValue("similarity"),
+        resolution: interaction.fields.getTextInputValue("resolution"),
+      });
       const status = await interaction.channel.send("사용자 지정 프롬프트로 그림을 처리할게요.").catch(() => null);
       await runNatsumiImageGeneration({ message: sourceMessage, prompt, image, statusMessage: status });
       await interaction.message?.edit?.({ components: [] }).catch(() => {});
@@ -58,9 +89,10 @@ export default {
       if (!sourceMessage || !image) return interaction.editReply("원본 이미지를 찾지 못했어요. 다시 올려주세요.");
 
       const resolution = mode === "resolution" ? parts[2] : null;
-      const prompt = resolution
-        ? `Convert the attached image into a polished anime-style image. Target long-side resolution: ${resolution}p.`
-        : "Convert the attached image into a polished anime-style image while preserving the main subject.";
+      const prompt = buildImagePrompt({
+        prompt: "Convert the attached image into a polished anime-style image while preserving the main subject.",
+        resolution,
+      });
 
       const status = await interaction.channel.send("AI그림 변환을 시작할게요.").catch(() => null);
       await runNatsumiImageGeneration({ message: sourceMessage, prompt, image, statusMessage: status });

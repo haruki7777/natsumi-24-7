@@ -5,6 +5,7 @@ import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle,
+  StringSelectMenuBuilder,
   PermissionFlagsBits
 } from "discord.js";
 
@@ -37,7 +38,17 @@ export default {
         .setStyle(ButtonStyle.Success)
         .setEmoji("🏮")
     );
+    const limitRow = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("privateVoiceSetup_limit")
+        .setPlaceholder("추가할 인원 제한 방 선택")
+        .addOptions(
+          { label: "2인방", value: "2", description: "기존 카테고리에 2인 트리거를 추가합니다." },
+          { label: "5인방", value: "5", description: "기존 카테고리에 5인 트리거를 추가합니다." },
+          { label: "10인방", value: "10", description: "기존 카테고리에 10인 트리거를 추가합니다." }
+        )
+    );
 
-    await interaction.reply({ embeds: [embed], components: [row] });
+    await interaction.reply({ embeds: [embed], components: [row, limitRow] });
   },
 };

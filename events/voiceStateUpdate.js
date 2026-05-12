@@ -73,7 +73,7 @@ export default {
                     }
 
                     // 1-3. 트리거 세팅 추출 (트리거 채널의 설정을 실시간으로 훔쳐옴)
-                    let limitToSet = 0;
+                    let limitToSet = Number(trigger.userLimit || 0);
                     let bitrateToSet = 64000;
                     
                     try {
@@ -82,10 +82,10 @@ export default {
                         
                         // 트리거 채널 정보를 API에서 강제로 다시 가져와서 사용자가 최근에 바꾼 인원제한을 반영함
                         const triggerData = await guild.channels.fetch(newId, { force: true });
-                        limitToSet = triggerData.userLimit ?? 0;
+                        limitToSet = Number(trigger.userLimit || triggerData.userLimit || 0);
                         bitrateToSet = triggerData.bitrate ?? 64000;
                     } catch (e) {
-                        limitToSet = newstate.channel?.userLimit ?? 0;
+                        limitToSet = Number(trigger.userLimit || newstate.channel?.userLimit || 0);
                         bitrateToSet = newstate.channel?.bitrate ?? 64000;
                     }
 

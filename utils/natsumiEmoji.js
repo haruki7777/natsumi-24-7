@@ -32,6 +32,12 @@ export const buildEmojiChoiceRow = (messageId) => [
       .setLabel("빈 공간을 투명하게 채우기")
       .setStyle(ButtonStyle.Secondary)
   ),
+  new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`NatsumiEmoji_raw_${messageId}`)
+      .setLabel("GIF 그대로 추가")
+      .setStyle(ButtonStyle.Success)
+  ),
 ];
 
 const loadImageMeta = async (url) => {
@@ -77,9 +83,16 @@ export const createEmojiFromMessage = async ({ message, mode = "crop", actorTag 
   if (!image) throw new Error("missing image");
 
   const emojiName = sanitizeEmojiName(message.content);
-  const buffer = await buildEmojiBuffer(image.url, mode);
+  let attachment;
+
+  if (mode === "raw" && ((image.contentType || "").includes("gif") || /\.gif$/i.test(image.name || ""))) {
+    attachment = image.url;
+  } else {
+    attachment = await buildEmojiBuffer(image.url, mode);
+  }
+
   return message.guild.emojis.create({
-    attachment: buffer,
+    attachment,
     name: emojiName,
     reason: `Natsumi emoji request: ${actorTag || message.author?.tag || "unknown"}`,
   });

@@ -1,90 +1,125 @@
 import { ChannelType, PermissionFlagsBits } from "discord.js";
 import Schema from "../models/privateVoice.js";
 
+const DEFAULT_ROOM_NAME = "{user}의 대화방";
+
+const ensureBaseSetup = async (guild) => {
+  const existingSetup = await Schema.findOne({ guildId: guild.id }).lean();
+  let category = null;
+  let trigger = null;
+
+  if (existingSetup) {
+    category = guild.channels.cache.get(existingSetup.categoryId) || await guild.channels.fetch(existingSetup.categoryId).catch(() => null);
+    trigger = guild.channels.cache.get(existingSetup.channelId) || await guild.channels.fetch(existingSetup.channelId).catch(() => null);
+  }
+
+  if (!category) {
+    category = await guild.channels.create({
+      name: "🏮 개인 음성 채널",
+      type: ChannelType.GuildCategory,
+      reason: "개인 음성 채널 자동 구축",
+    });
+  }
+
+  if (!trigger) {
+    trigger = await guild.channels.create({
+      name: "대화방 생성",
+      type: ChannelType.GuildVoice,
+      parent: category.id,
+      userLimit: 0,
+      reason: "개인 음성 채널 자동 구축",
+    });
+  }
+
+  await Schema.findOneAndUpdate(
+    { guildId: guild.id, channelId: trigger.id },
+    {
+      guildId: guild.id,
+      categoryId: category.id,
+      channelId: trigger.id,
+      name: DEFAULT_ROOM_NAME,
+      userLimit: trigger.userLimit || 0,
+    },
+    { upsert: true, new: true }
+  );
+
+  return { category, trigger };
+};
+
+const createLimitedTrigger = async (guild, limit) => {
+  const { category } = await ensureBaseSetup(guild);
+  const trigger = await guild.channels.create({
+    name: `${limit}인방 생성`,
+    type: ChannelType.GuildVoice,
+    parent: category.id,
+    userLimit: limit,
+    reason: `개인 음성 채널 ${limit}인방 트리거 추가`,
+  });
+
+  await Schema.findOneAndUpdate(
+    { guildId: guild.id, channelId: trigger.id },
+    {
+      guildId: guild.id,
+      categoryId: category.id,
+      channelId: trigger.id,
+      name: `{user}의 ${limit}인방`,
+      userLimit: limit,
+    },
+    { upsert: true, new: true }
+  );
+
+  return { category, trigger };
+};
+
 export default {
   name: "privateVoiceSetup",
-  /**
-   * @param {import("discord.js").ButtonInteraction} interaction
-   */
-  async execute(interaction) {
-    // 권한 확인 (관리자만 실행 가능하도록)
-    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-      return interaction.reply({ content: "❌ **흥! 이 작업은 서버 관리자님만 할 수 있어!**", ephemeral: true });
-    }
 
-    // 중복 방지를 위해 업데이트 처리
-    await interaction.deferUpdate();
+  async execute(interaction) {
+    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return interaction.reply({ content: "**이 작업은 서버 관리자만 할 수 있어요.**", ephemeral: true });
+    }
 
     try {
-      const guild = interaction.guild;
-      
-      // 기존 설정 확인
-      const existingSetup = await Schema.findOne({ guildId: guild.id });
-      let category = null;
-      let trigger = null;
+      if (interaction.isAnySelectMenu?.() && interaction.customId === "privateVoiceSetup_limit") {
+        await interaction.deferReply({ ephemeral: true });
+        const limit = Number(interaction.values?.[0] || 0);
+        if (![2, 5, 10].includes(limit)) return interaction.editReply("지원하지 않는 인원 제한이에요.");
 
-      if (existingSetup) {
-        category = guild.channels.cache.get(existingSetup.categoryId) || await guild.channels.fetch(existingSetup.categoryId).catch(() => null);
-        trigger = guild.channels.cache.get(existingSetup.channelId) || await guild.channels.fetch(existingSetup.channelId).catch(() => null);
+        const { category, trigger } = await createLimitedTrigger(interaction.guild, limit);
+        return interaction.editReply(`**${category} 카테고리에 ${trigger} ${limit}인방 트리거를 추가했어요.**`);
       }
 
-      if (category && trigger) {
-        // 이미 구축된 경우에도 기존 설정 메시지는 삭제
+      await interaction.deferUpdate();
+      const existing = await Schema.findOne({ guildId: interaction.guild.id }).lean();
+      const existingCategory = existing
+        ? interaction.guild.channels.cache.get(existing.categoryId) || await interaction.guild.channels.fetch(existing.categoryId).catch(() => null)
+        : null;
+      const existingTrigger = existing
+        ? interaction.guild.channels.cache.get(existing.channelId) || await interaction.guild.channels.fetch(existing.channelId).catch(() => null)
+        : null;
+
+      if (existingCategory && existingTrigger) {
         await interaction.message.delete().catch(() => {});
-        
         return interaction.followUp({
-          content: "⚠️ **이미 시스템이 구축되어 있어! 한 서버에 하나만 만들 수 있거든!**",
-          ephemeral: true
+          content: "**이미 개인 음성 시스템이 구축되어 있어요. 추가 인원 제한 방은 셀렉트 메뉴에서 골라주세요.**",
+          ephemeral: true,
         });
       }
 
-      // 1. 카테고리 없으면 생성
-      if (!category) {
-        category = await guild.channels.create({
-          name: "🏮 개인 음성 채널",
-          type: ChannelType.GuildCategory,
-          reason: "개인 음성 채널 자동 구축"
-        });
-      }
-
-      // 2. 트리거 채널(생성기) 없으면 생성
-      if (!trigger) {
-        trigger = await guild.channels.create({
-          name: "➕ 대화방 생성",
-          type: ChannelType.GuildVoice,
-          parent: category.id,
-          userLimit: 0, 
-          reason: "개인 음성 채널 자동 구축"
-        });
-      }
-
-      // 3. DB에 설정 저장 (기존 설정이 있다면 채널 정보만 정확히 갱신)
-      await Schema.findOneAndUpdate(
-        { guildId: guild.id },
-        { 
-          categoryId: category.id, 
-          channelId: trigger.id,
-          name: "{user}의 대화방"
-        },
-        { upsert: true, new: true }
-      );
-
-      // 성공 시 기존 설정 메시지 삭제
+      const { category, trigger } = await ensureBaseSetup(interaction.guild);
       await interaction.message.delete().catch(() => {});
-
-      // 임시 메시지로 성공 알림
-      await interaction.followUp({
-        content: `**✅ ${category} 카테고리에 개인 음성 시스템 구축을 완료했어!**\n` +
-                 `이제 '${trigger.name}' 채널의 **[인원 제한]** 설정을 관리자님이 앱에서 직접 수정하면, 생성되는 모든 방이 그 숫자를 따라갈 거야!`,
-        ephemeral: true
+      return interaction.followUp({
+        content: `**${category} 카테고리에 개인 음성 시스템 구축을 완료했어요.**\n이제 ${trigger} 채널에 들어가면 개인 방이 생성돼요.`,
+        ephemeral: true,
       });
-
     } catch (error) {
       console.error("[Private Voice Setup Button Error]", error);
-      await interaction.followUp({
-        content: "❌ **으윽... 채널을 만드는 도중에 오류가 발생했어. 나에게 '채널 관리' 권한이 있는지 확인해 줘!**",
-        ephemeral: true
-      });
+      const payload = {
+        content: "**채널을 만드는 중 오류가 발생했어요. 봇의 채널 관리 권한을 확인해주세요.**",
+        ephemeral: true,
+      };
+      if (interaction.deferred || interaction.replied) return interaction.followUp(payload).catch(() => {});
+      return interaction.reply(payload).catch(() => {});
     }
-  }
+  },
 };

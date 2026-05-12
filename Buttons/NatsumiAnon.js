@@ -47,10 +47,15 @@ const buildAnonButtons = () => [
       .setEmoji("🎭")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
+      .setCustomId("NatsumiAnon_ip")
+      .setLabel("유동 IP")
+      .setEmoji("🌐")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId("NatsumiAnon_reset")
-      .setLabel("유동 IP 초기화")
+      .setLabel("초기화")
       .setEmoji("🌀")
-      .setStyle(ButtonStyle.Secondary)
+      .setStyle(ButtonStyle.Danger)
   ),
 ];
 
@@ -96,11 +101,30 @@ export default {
       return openModal(interaction);
     }
 
+    if (interaction.isButton() && interaction.customId === "NatsumiAnon_ip") {
+      const anonIp = await getOrCreateAnonIp(interaction.guildId, interaction.user.id);
+      return interaction.reply({
+        content: `이번 유동 IP는 \`${anonIp}\` 이야. 이 IP로 익명 메시지를 보낼게.`,
+        ephemeral: true,
+      });
+    }
+
     if (interaction.isButton() && interaction.customId === "NatsumiAnon_reset") {
       const anonIp = await resetAnonIp(interaction.guildId, interaction.user.id);
-      await interaction.message.delete().catch(() => {});
+      const messages = await interaction.channel.messages.fetch({ limit: 50 }).catch(() => null);
+      const deletable = messages?.filter((msg) =>
+        msg.author.id === interaction.client.user.id &&
+        msg.embeds.some((embed) => String(embed.footer?.text || "").includes("익명"))
+      );
+      if (deletable?.size) {
+        await interaction.channel.bulkDelete(deletable, true).catch(async () => {
+          for (const msg of deletable.values()) await msg.delete().catch(() => {});
+        });
+      } else {
+        await interaction.message.delete().catch(() => {});
+      }
       return interaction.reply({
-        content: `IP변경: \`${anonIp}\`\n필독`,
+        content: `익명방을 초기화했어. 새 유동 IP는 \`${anonIp}\` 이야.`,
         components: [
           new ActionRowBuilder().addComponents(
             new ButtonBuilder()
