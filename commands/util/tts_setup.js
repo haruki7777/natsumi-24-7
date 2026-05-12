@@ -14,17 +14,17 @@ const categoryOptions = [
   {
     label: "한국어 보이스",
     value: "ko",
-    description: "한국어로 판정된 Fish Audio 보이스를 보여줘요.",
+    description: "한국어 목소리 5개를 제목과 스타일로 보여줘요.",
   },
   {
     label: "일본어 보이스",
     value: "ja",
-    description: "일본어로 판정된 Fish Audio 보이스를 보여줘요.",
+    description: "일본어 목소리 5개를 제목과 스타일로 보여줘요.",
   },
   {
     label: "기본 보이스",
     value: "static",
-    description: "API 목록 없이 바로 쓸 수 있는 기본 보이스예요.",
+    description: "바로 사용할 수 있는 기본 목소리 5개예요.",
   },
 ];
 
@@ -56,8 +56,8 @@ export const buildTtsCategoryView = async (interaction) => {
     .setTitle("서버 TTS 목소리 설정")
     .setDescription([
       "관리자만 서버 TTS 기본 목소리를 바꿀 수 있어요.",
-      "먼저 보이스 카테고리를 고르면, 그 카테고리 안에서 목소리를 선택할 수 있어요.",
-      "명령어가 멈추지 않도록 첫 화면에서는 API 목록을 바로 불러오지 않아요.",
+      "카테고리를 고르면 제목과 스타일이 있는 목소리 5개를 보여줘요.",
+      "TTS 채팅방에서 사용자가 말하면, 나츠미가 그 사용자의 음성채널로 들어가 읽어줘요.",
       "",
       `현재 서버 목소리: **${pref?.voiceName || DEFAULT_TTS_VOICE.name}**`,
     ].join("\n"));
@@ -81,12 +81,12 @@ export const buildTtsVoiceView = async (interaction, category) => {
   if (category === "ko") {
     title = "한국어 보이스";
     voices = hasFishKey
-      ? await fetchFishAudioVoiceOptions({ limit: 25, locale: "한국어" }).catch(() => [])
+      ? await fetchFishAudioVoiceOptions({ limit: 5, locale: "한국어" }).catch(() => [])
       : [];
   } else if (category === "ja") {
     title = "일본어 보이스";
     voices = hasFishKey
-      ? await fetchFishAudioVoiceOptions({ limit: 25, locale: "일본어" }).catch(() => [])
+      ? await fetchFishAudioVoiceOptions({ limit: 5, locale: "일본어" }).catch(() => [])
       : [];
   }
 
@@ -102,7 +102,7 @@ export const buildTtsVoiceView = async (interaction, category) => {
     .setTitle(`${title} 선택`)
     .setDescription([
       "아래 목록에서 서버 전체가 사용할 TTS 목소리를 골라주세요.",
-      "선택한 목소리는 TTS 전용 채널에서 모두에게 적용돼요.",
+      "목록은 최대 5개만 보여줘서 고르기 쉽게 정리했어요.",
       "",
       `현재 서버 목소리: **${pref?.voiceName || DEFAULT_TTS_VOICE.name}**`,
     ].join("\n"));
@@ -111,7 +111,7 @@ export const buildTtsVoiceView = async (interaction, category) => {
     new StringSelectMenuBuilder()
       .setCustomId(`NatsumiTts_voice_${category}`)
       .setPlaceholder(`${title} 선택`)
-      .addOptions(voices.slice(0, 25).map((voice) => toSelectOption(voice, pref)))
+      .addOptions(voices.slice(0, 5).map((voice) => toSelectOption(voice, pref)))
   );
 
   const backSelect = new ActionRowBuilder().addComponents(

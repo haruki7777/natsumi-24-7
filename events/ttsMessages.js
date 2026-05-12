@@ -7,8 +7,9 @@ const isTtsChannel = (message, setup) => {
   if (configuredTtsId && message.channel.id === configuredTtsId) return true;
   if (configuredTtsId) return false;
 
-  const name = String(message.channel.name || "").toLowerCase();
-  return message.channel?.type === ChannelType.GuildText && (name.includes("tts") || name.includes("읽어"));
+  const name = String(message.channel.name || "").replace(/\s+/g, "").toLowerCase();
+  return message.channel?.type === ChannelType.GuildText
+    && (name.includes("tts") || name.includes("rrs") || name.includes("읽어") || name.includes("음성"));
 };
 
 const getTargetVoiceChannel = (message) => {
@@ -26,7 +27,13 @@ export default {
     if (!isTtsChannel(message, setup)) return;
 
     const voiceChannel = getTargetVoiceChannel(message);
-    if (!voiceChannel) return;
+    if (!voiceChannel) {
+      await message.reply({
+        content: "먼저 음성채널에 들어간 다음 TTS방에 말을 적어줘요.",
+        allowedMentions: { repliedUser: false },
+      }).then((reply) => setTimeout(() => reply.delete().catch(() => {}), 5000)).catch(() => {});
+      return;
+    }
 
     try {
       await speakMessage({ message, voiceChannel });

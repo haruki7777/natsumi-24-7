@@ -10,7 +10,7 @@ import { TTS_VOICES, fetchFishAudioVoiceOptions } from "../utils/ttsVoices.js";
 const findVoice = async (selectedValue, category) => {
   if (selectedValue?.startsWith?.("fish:")) {
     const locale = category === "ko" ? "한국어" : category === "ja" ? "일본어" : null;
-    const fishVoices = await fetchFishAudioVoiceOptions({ limit: 25, locale }).catch(() => []);
+    const fishVoices = await fetchFishAudioVoiceOptions({ limit: 5, locale }).catch(() => []);
     return fishVoices.find((voice) => voice.value === selectedValue);
   }
 
@@ -33,9 +33,6 @@ export default {
     if (mode === "category") {
       await interaction.deferUpdate();
       const category = interaction.values?.[0];
-      if (category === "back") {
-        return interaction.editReply(await buildTtsCategoryView(interaction));
-      }
       return interaction.editReply(await buildTtsVoiceView(interaction, category));
     }
 
@@ -57,7 +54,7 @@ export default {
         { upsert: true, new: true }
       );
 
-      const view = await buildTtsVoiceView(interaction, category);
+      const view = await buildTtsCategoryView(interaction);
       return interaction.editReply({
         ...view,
         content: `서버 TTS 목소리를 **${voice.name}**(으)로 바꿨어요.`,
