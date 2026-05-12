@@ -9,6 +9,7 @@ import {
   joinVoiceChannel,
 } from "@discordjs/voice";
 import ffmpegPath from "ffmpeg-static";
+import NatsumiTtsPreference from "../models/NatsumiTtsPreference.js";
 
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
 
@@ -26,16 +27,16 @@ const cleanText = (message) => {
     .slice(0, MAX_TTS_LENGTH);
 };
 
-const buildTtsUrl = (text) => {
+const buildTtsUrl = (text, voice = null) => {
   const endpoint = process.env.NATSUMI_TTS_API_URL || "https://api.streamelements.com/kappa/v2/speech";
   const url = new URL(endpoint);
-  if (!url.searchParams.has("voice")) url.searchParams.set("voice", process.env.NATSUMI_TTS_VOICE || "Seoyeon");
+  if (!url.searchParams.has("voice")) url.searchParams.set("voice", voice || process.env.NATSUMI_TTS_VOICE || "Seoyeon");
   url.searchParams.set("text", text);
   return url;
 };
 
-const fetchTtsBuffer = async (text) => {
-  const response = await fetch(buildTtsUrl(text), {
+const fetchTtsBuffer = async (text, voice = null) => {
+  const response = await fetch(buildTtsUrl(text, voice), {
     headers: { "User-Agent": "NatsumiDiscordBot/1.0" },
   });
   if (!response.ok) throw new Error(`TTS API ${response.status}`);
@@ -96,7 +97,11 @@ export const speakMessage = async ({ message, voiceChannel }) => {
   if (!text) return false;
 
   return enqueue(message.guild.id, async () => {
-    const buffer = await fetchTtsBuffer(text);
+    const pref = await NatsumiTtsPreference.findOne({
+      guildId: message.guild.id,
+      userId: message.author.id,
+    }).lean().catch(() => null);
+    const buffer = await fetchTtsBuffer(text, pref?.voiceId || null);
     return playBuffer({ message, voiceChannel, buffer });
   });
 };
