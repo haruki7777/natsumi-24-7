@@ -33,7 +33,7 @@ interface ExtendedClient extends Client {
 async function startServer() {
   console.log(">>> [BOOT] starting startServer() function...");
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || process.env.WEB_PORT || 3000);
 
   const instanceId = Math.random().toString(36).substring(2, 8);
   let botStatus = "Offline";
@@ -218,215 +218,115 @@ async function startServer() {
       botUptime = Date.now();
       addLog(`[System] Natsumi v6.3.1 Ultimate | Ready as ${readyClient.user.tag}`);
       addLog(`[Config] 100+ Guilds Optimized | Fishing Content Expansion (120+ Items)`);
-      
-      if (!currentIntents.has(GatewayIntentBits.MessageContent)) {
-          addLog("!!! CRITICAL: Message Content Intent missing !!!");
-      }
-      
+
+      await registerSlashCommands();
+
       try {
-        await registerSlashCommands();
-        addLog("[Discord] Slash Command Sync Complete.");
-      } catch (err: any) {
-        addLog(`[Discord] Sync Failed: ${err.message}`);
+        startRuntimeIntervals();
+      } catch (e: any) {
+        addLog(`[Runtime] Failed to start intervals: ${e.message}`);
       }
     });
 
-    c.on(Events.Error, (e) => {
-      botStatus = "Error";
-      lastError = e.message;
-      addLog(`[DJS Error] ${e.message}`);
-    });
-
-    c.on("debug", (info) => {
-      if (info.toLowerCase().includes("heartbeat") || info.toLowerCase().includes("latency")) return;
-      if (info.toLowerCase().includes("session") || info.toLowerCase().includes("identif")) {
-          addLog(`[DJS Debug] ${info}`);
-      }
-    });
-
-    c.on("shardDisconnect", (event, id) => {
-      addLog(`[Shard ${id}] Disconnected: ${event.reason || "Unknown reason"}`);
-    });
-  };
-
-  const createClientInstance = (intents: IntentsBitField) => {
-    const newClient = new Client({
-      intents: intents,
-      partials: [Partials.Channel, Partials.Message, Partials.User],
-      rest: { 
-        offset: 50, 
-        timeout: 15000, 
-        retries: 3,
-        rejectOnRateLimit: (data) => data.timeout > 10000 
-      },
-      // 100+ Servers Aggressive Cache Strategy
-      makeCache: Options.cacheWithLimits({
-        MessageManager: 15,          // 최소한의 메시지만 보관
-        ThreadManager: 5,
-        PresenceManager: 0,          // 인텐트 미승인 대비 0 설정
-        ReactionManager: 0,
-        GuildMemberManager: 50,      // 메모리 절약을 위해 대폭 축소
-        UserManager: 50,
-        VoiceStateManager: 10,
-        BaseGuildEmojiManager: 0,    // 이모지 캐시 완전 비활성화
-        GuildBanManager: 0,
-        GuildInviteManager: 0,
-        GuildStickerManager: 0,
-        GuildScheduledEventManager: 0,
-      }),
-      sweepers: {
-        ...Options.DefaultSweeperSettings,
-        messages: {
-            interval: 300,           // 5분마다 메시지 완전 삭제
-            lifetime: 300,
-        },
-        users: {
-            interval: 600,
-            filter: () => (user: any) => user.id !== client?.user?.id,
+    c.on(Events.InteractionCreate, async (interaction) => {
+      if (interaction.isChatInputCommand()) {
+        const command = c.commands.get(interaction.commandName);
+        if (!command) return;
+        try {
+          await command.execute(interaction, c);
+        } catch (error: any) {
+          addLog(`[Cmd Error] ${interaction.commandName}: ${error.message}`);
+          const payload = { content: "명령어 실행 중 오류가 발생했어!", ephemeral: true };
+          if (interaction.deferred || interaction.replied) await interaction.editReply(payload).catch(() => {});
+          else await interaction.reply(payload).catch(() => {});
         }
       }
-    }) as ExtendedClient;
-    
-    newClient.instanceId = instanceId;
-    
-    // --- Performance Damping & Rate Limit Cooling ---
-    newClient.rest.on('rateLimited', (info) => {
-      isCooling = true;
-      lastCoolingAt = Date.now();
-      addLog(`[Damping] API Cooling In Progress... Route: ${info.route} | Wait: ${info.timeToReset}ms`);
-      setTimeout(() => { isCooling = false; }, info.timeToReset);
+
+      if (interaction.isButton()) {
+        const customId = interaction.customId;
+        const button = c.buttons.get(customId) || c.buttons.find((b: any, key: string) => customId.startsWith(key));
+        if (!button) return;
+        try {
+          await button.execute(interaction, c);
+        } catch (error: any) {
+          addLog(`[Btn Error] ${customId}: ${error.message}`);
+        }
+      }
     });
 
-    setupClientHandlers(newClient);
-    return newClient;
+    c.on(Events.MessageCreate, async (message) => {
+      if (message.author.bot) return;
+      messageCount++;
+    });
   };
 
-  const performLogin = async (token: string) => {
+  const connectMongo = async () => {
+    if (!mongoUri || isPlaceholder(mongoUri)) {
+      addLog("[MongoDB] MONGOOSE is missing or placeholder.");
+      return false;
+    }
     try {
-      addLog("Ultimate Core Engine 가동 중...");
-      client = createClientInstance(currentIntents);
-      await loadBotResources(client);
-      
-      addLog("디스코드 게이트웨이 연결 시도...");
-      
-      // Set a temporary timeout for login logging
-      const loginTimeout = setTimeout(() => {
-        if (botStatus === "Offline") {
-          addLog("WARNING: Login is taking longer than expected. Check Discord Status or Intents.");
-        }
-      }, 15000);
-
-      await client.login(token);
-      clearTimeout(loginTimeout);
+      await mongoose.connect(mongoUri, {
+        maxPoolSize: Number(process.env.MONGO_MAX_POOL_SIZE || 10),
+      });
+      addLog("[MongoDB] Connected.");
+      return true;
     } catch (e: any) {
-      botStatus = "Login Failed";
-      lastError = e.message;
-      addLog(`[로그인 실패] ${e.message}`);
-      
-      if (e.message.includes("intents") || e.code === "DisallowedIntents") {
-        addLog("CRITICAL: 인텐트 설정이 올바르지 않습니다!");
-        addLog("디스코드 개발자 포털에서 'MESSAGE CONTENT', 'SERVER MEMBERS', 'PRESENCE' 인텐트가 모두 켜져있는지 확인해주세요.");
-      } else {
-        addLog("치명적 오류: 토큰이 올바른지, 혹은 네트워크 상태를 확인해주세요.");
-      }
+      addLog(`[MongoDB] Connection failed: ${e.message}`);
+      return false;
     }
   };
 
-  if (geminiKey) {
-      if (isPlaceholder(process.env.MY_GEMINI_API_KEY)) {
-        addLog("WARNING: MY_GEMINI_API_KEY seems to be a placeholder!");
-      } else {
-        addLog("AI Engine Key Loaded.");
-      }
-  } else {
-      addLog("WARNING: GEMINI_API_KEY is missing! AI features may not work.");
-  }
-
-  // --- Process Error Handling (To prevent crashing) ---
-  process.on("unhandledRejection", (reason, promise) => {
-    console.error(`[FATAL] Unhandled Rejection at: ${promise} reason: ${reason}`);
-    addLog(`Unhandled Rejection: ${reason}`);
-  });
-
-  process.on("uncaughtException", (err) => {
-    console.error(`[FATAL] Uncaught Exception: ${err.message}`);
-    addLog(`Uncaught Exception: ${err.message}`);
-  });
-
-  // Balanced GC and System Sweep (Every 5 minutes)
-  setInterval(() => {
-    try {
+  const startRuntimeIntervals = () => {
+    setInterval(() => {
       if (client && client.isReady && client.isReady()) {
-        client.guilds.cache.forEach((guild: any) => {
-           guild.messages.cache.clear();
-           guild.voiceStates.cache.clear();
-        });
-        import("./utils/cache.js").then(m => m.clearCache()).catch(() => {});
+        const sample = recordRuntimeSample(client);
+        if (sample.gatewayPing >= 500 || sample.eventLoopLagMs >= 100 || sample.eventLoopMaxMs >= 1000) {
+          addLog(`[Health] WS=${sample.gatewayPing}ms lag=${sample.eventLoopLagMs}/${sample.eventLoopMaxMs}ms memory=${sample.memoryRssMb}MB`);
+        }
       }
-      if (global.gc) global.gc();
-    } catch (e: any) {}
-  }, 300000);
+    }, 60000);
+  };
 
-  // --- MongoDB Connection ---
-  if (mongoUri) {
-    const connectDB = async () => {
-      try {
-        await mongoose.connect(mongoUri, {
-          serverSelectionTimeoutMS: 10000,
-          socketTimeoutMS: 45000,
-          family: 4,
-        });
-        addLog("MongoDB Connected successfully.");
-      } catch (err: any) {
-        addLog(`MongoDB Initial Connection Failed: ${err.message}`);
-        setTimeout(connectDB, 5000); // Retry after 5s
-      }
-    };
-
-    mongoose.connection.on("error", (err) => {
-      addLog(`MongoDB Runtime Error: ${err.message}`);
-    });
-
-    mongoose.connection.on("disconnected", () => {
-      addLog("MongoDB Disconnected. Attempting to reconnect...");
-      connectDB();
-    });
-
-    connectDB();
-  }
-
-  if (discordToken) {
-    if (isPlaceholder(process.env.TOKEN)) {
-      botStatus = "Login Failed";
-      lastError = "Environment variable 'TOKEN' is still set to its placeholder value. Please update it in the Secrets panel.";
-      addLog(`[Error] ${lastError}`);
-    } else {
-      performLogin(discordToken);
+  const startDiscord = async () => {
+    if (!discordToken || !clientId || isPlaceholder(discordToken) || isPlaceholder(clientId)) {
+      addLog("[Discord] TOKEN or ID missing/placeholder. Bot not started.");
+      return;
     }
-  } else {
-    botStatus = "No Token";
-    addLog("Missing TOKEN environment variable.");
-  }
+
+    client = new Client({
+      intents: currentIntents,
+      partials: [Partials.Channel, Partials.Message, Partials.User],
+      makeCache: Options.cacheWithLimits({
+        MessageManager: 20,
+        PresenceManager: 0,
+        GuildMemberManager: 20,
+      }),
+    }) as ExtendedClient;
+
+    await loadBotResources(client);
+    setupClientHandlers(client);
+
+    try {
+      await client.login(discordToken);
+    } catch (e: any) {
+      addLog(`[Discord] Login failed: ${e.message}`);
+    }
+  };
 
   // --- API Routes ---
-  app.get("/ping", (req, res) => {
-    console.log(`[Ping] Received ping from ${req.headers['x-forwarded-for'] || req.ip}`);
-    res.status(200).send("Pong! I am awake.");
-  });
-
+  app.get("/ping", (req, res) => res.send("pong"));
   app.get("/api/status", (req, res) => {
-    const health = getRuntimeHealth(client);
+    const health = getRuntimeHealth();
     res.json({
       status: botStatus,
-      ping: health.gatewayPing,
+      ping: client?.ws.ping ?? botPing,
       uptime: botUptime ? Math.floor((Date.now() - botUptime) / 1000) : 0,
-      messageCount,
+      guilds: client?.guilds.cache.size || 0,
+      messages: messageCount,
       lastError,
-      logs: logs.slice().reverse(),
-      tag: client?.user?.tag || "N/A",
-      guilds: health.guilds,
-      eventLoopLagMs: health.eventLoopLagMs,
-      eventLoopMaxMs: health.eventLoopMaxMs,
+      logs,
+      runtime: health,
       memoryMb: health.memoryRssMb,
       isCooling: isCooling || (Date.now() - lastCoolingAt < 30000), // 30s cooling window after event
       engine: "v6.4.0 Damping Core",
