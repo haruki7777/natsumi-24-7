@@ -11,7 +11,7 @@ const ownerIds = () =>
 
 const isAllowed = (interaction: any) => {
   const owners = ownerIds();
-  return owners.has(interaction.user.id) || interaction.memberPermissions?.has?.(PermissionFlagsBits.Administrator);
+  return owners.size > 0 && owners.has(interaction.user.id);
 };
 
 const sendLong = async (interaction: any, content: string) => {
@@ -22,7 +22,7 @@ const sendLong = async (interaction: any, content: string) => {
 export default {
   data: new SlashCommandBuilder()
     .setName("natsufix")
-    .setDescription("나츠미 자동수리 분석 도구")
+    .setDescription("나츠미 개발자 전용 자동수리 분석 도구")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand((sub) =>
       sub
@@ -37,7 +37,10 @@ export default {
 
   async execute(interaction: any) {
     if (!isAllowed(interaction)) {
-      return interaction.reply({ content: "관리자 또는 NATSUFIX_OWNER_IDS에 등록된 사람만 쓸 수 있어. 흥 😤", ephemeral: true });
+      return interaction.reply({
+        content: "개발자 전용 명령어야. NATSUFIX_OWNER_IDS에 등록된 계정만 쓸 수 있어. 흥 😤",
+        ephemeral: true,
+      });
     }
 
     await interaction.deferReply({ ephemeral: true });
