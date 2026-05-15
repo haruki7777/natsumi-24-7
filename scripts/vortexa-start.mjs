@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -7,8 +7,7 @@ const branch = process.env.BRANCH || process.env.GIT_BRANCH || "main";
 const shouldUpdate = process.env.VORTEXA_AUTO_UPDATE !== "false";
 const shouldInstall = process.env.VORTEXA_NPM_INSTALL !== "false";
 const quiet = process.env.VORTEXA_QUIET !== "false";
-const entrypoint = process.env.VORTEXA_ENTRYPOINT || process.env.START_ENTRYPOINT || "server.ts";
-const separateBot = process.env.SEPARATE_BOT_PROCESS === "true";
+const entrypoint = process.env.VORTEXA_ENTRYPOINT || process.env.START_ENTRYPOINT || process.env.MAIN_FILE || "start.js";
 
 const log = (message) => console.log(`[Vortexa] ${message}`);
 
@@ -44,7 +43,7 @@ const remove = (target) => {
 
 const cleanOldCache = () => {
   log("cleaning old cache and stale files...");
-  const targets = [".cache", ".vite", "dist", "build", "tmp", "temp", "logs", "node_modules/.cache"];
+  const targets = [".cache", ".vite", "build", "tmp", "temp", "logs", "node_modules/.cache"];
   for (const target of targets) remove(target);
 };
 
@@ -53,7 +52,6 @@ const syncLatestGit = () => {
     log("git sync skipped");
     return;
   }
-
   log(`syncing latest origin/${branch}...`);
   run("git", ["config", "--global", "--add", "safe.directory", "*"]);
   run("git", ["fetch", "--prune", "origin", branch]);
@@ -70,41 +68,13 @@ const installDeps = () => {
   run("npm", ["install", "--no-audit", "--no-fund", "--prefer-online"]);
 };
 
-const startSingleProcess = () => {
+const startNatsumi = () => {
   log(`starting NATSUMI with ${entrypoint}...`);
-  const result = spawnSync("npx", ["tsx", entrypoint], {
-    cwd: root,
-    stdio: "inherit",
-    env: process.env,
-  });
+  const isJs = entrypoint.endsWith(".js") || entrypoint.endsWith(".mjs");
+  const result = isJs
+    ? spawnSync("node", [entrypoint], { cwd: root, stdio: "inherit", env: process.env })
+    : spawnSync("npx", ["tsx", entrypoint], { cwd: root, stdio: "inherit", env: process.env });
   process.exit(result.status ?? 0);
-};
-
-const startSeparateProcesses = () => {
-  log("starting NATSUMI web server with server.ts and bot with bot.ts...");
-  log("warning: use this only if server.ts is configured not to log in as the bot, otherwise Discord sessions may conflict.");
-
-  const web = spawn("npx", ["tsx", "server.ts"], { cwd: root, stdio: "inherit", env: { ...process.env, DISCORD_BOT_DISABLED: "true" } });
-  const bot = spawn("npx", ["tsx", "bot.ts"], { cwd: root, stdio: "inherit", env: process.env });
-
-  const shutdown = (code = 0) => {
-    web.kill("SIGTERM");
-    bot.kill("SIGTERM");
-    process.exit(code);
-  };
-
-  web.on("exit", (code) => {
-    console.error(`[Vortexa] web process exited with code ${code}`);
-    bot.kill("SIGTERM");
-    process.exit(code ?? 1);
-  });
-  bot.on("exit", (code) => {
-    console.error(`[Vortexa] bot process exited with code ${code}`);
-    web.kill("SIGTERM");
-    process.exit(code ?? 1);
-  });
-  process.on("SIGTERM", () => shutdown(0));
-  process.on("SIGINT", () => shutdown(0));
 };
 
 try {
@@ -112,8 +82,7 @@ try {
   syncLatestGit();
   cleanOldCache();
   installDeps();
-  if (separateBot) startSeparateProcesses();
-  else startSingleProcess();
+  startNatsumi();
 } catch (error) {
   console.error(`[Vortexa] startup failed: ${error.message}`);
   process.exit(1);
