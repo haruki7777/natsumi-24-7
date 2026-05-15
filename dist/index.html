@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NATSUMI Arcade</title>
+  <style>
+    body{margin:0;min-height:100vh;background:linear-gradient(135deg,#090611,#1b102a 55%,#2a1018);color:#fff8ee;font-family:system-ui,Apple SD Gothic Neo,sans-serif;padding:18px}a,button{font:inherit}.btn,button{border:0;border-radius:999px;padding:13px 18px;background:linear-gradient(135deg,#ff8a2a,#ff4fa3);color:white;font-weight:900;text-decoration:none;display:inline-block}.card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:26px;padding:22px;margin:14px 0;box-shadow:0 24px 80px rgba(0,0,0,.35)}h1{font-size:clamp(38px,10vw,78px);line-height:1.02}.fox{font-size:84px;animation:bounce 1.4s infinite}.row{display:flex;gap:12px;flex-wrap:wrap}.result{white-space:pre-wrap;border:1px dashed rgba(255,255,255,.18);border-radius:18px;padding:16px;background:rgba(0,0,0,.25);margin-top:12px}.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.game{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:14px;text-align:left;color:white}.game b{display:block}@keyframes bounce{50%{transform:translateY(-10px)}}@media(max-width:720px){body{padding:12px}.card{border-radius:20px;padding:16px}.fox{display:none}.row>*{width:100%;text-align:center}}
+  </style>
+</head>
+<body>
+  <header class="row"><b>🦊 NATSUMI Arcade</b><a class="btn" href="https://qr.kakaopay.com/Fa7OA44AL" target="_blank" rel="noreferrer">후원하기</a></header>
+  <section class="card">
+    <div class="row"><div style="flex:1"><p>FOX GAME PORTAL</p><h1>나츠미 게임센터</h1><p>웹서버 연결 성공! 이 페이지가 보이면 루트 라우팅은 정상 작동 중이야.</p><a class="btn" href="/ping">Ping 확인</a></div><div class="fox">🦊</div></div>
+    <div id="status" class="result">페이지 로드 완료</div>
+  </section>
+  <section class="card"><h2>게임 메뉴</h2><div class="games"><button class="game">🎰 <b>슬롯머신</b>웹 게임 연결 예정</button><button class="game">🎣 <b>낚시</b>웹 게임 연결 예정</button><button class="game">⛏️ <b>광산</b>웹 게임 연결 예정</button><button class="game">🐹 <b>두더지</b>웹 게임 연결 예정</button></div></section>
+  <script>
+    fetch('/api/status').then(r=>r.json()).then(d=>{document.getElementById('status').textContent='봇 상태: '+(d.status||'unknown')+'\n서버 수: '+(d.guilds||0)}).catch(()=>{});
+  </script>
+</body>
+</html>
