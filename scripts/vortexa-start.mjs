@@ -7,6 +7,7 @@ const branch = process.env.BRANCH || process.env.GIT_BRANCH || "main";
 const shouldUpdate = process.env.VORTEXA_AUTO_UPDATE !== "false";
 const shouldInstall = process.env.VORTEXA_NPM_INSTALL !== "false";
 const quiet = process.env.VORTEXA_QUIET !== "false";
+const entrypoint = process.env.VORTEXA_ENTRYPOINT || process.env.START_ENTRYPOINT || "server.ts";
 
 const log = (message) => console.log(`[Vortexa] ${message}`);
 
@@ -42,18 +43,7 @@ const remove = (target) => {
 
 const cleanOldCache = () => {
   log("cleaning old cache and stale files...");
-
-  const targets = [
-    ".cache",
-    ".vite",
-    "dist",
-    "build",
-    "tmp",
-    "temp",
-    "logs",
-    "node_modules/.cache",
-  ];
-
+  const targets = [".cache", ".vite", "dist", "build", "tmp", "temp", "logs", "node_modules/.cache"];
   for (const target of targets) remove(target);
 };
 
@@ -75,14 +65,13 @@ const installDeps = () => {
     log("npm install skipped");
     return;
   }
-
   log("refreshing dependencies quietly...");
   run("npm", ["install", "--no-audit", "--no-fund", "--prefer-online"]);
 };
 
-const startBot = () => {
-  log("starting NATSUMI bot...");
-  const result = spawnSync("npx", ["tsx", "bot.ts"], {
+const startNatsumi = () => {
+  log(`starting NATSUMI with ${entrypoint}...`);
+  const result = spawnSync("npx", ["tsx", entrypoint], {
     cwd: root,
     stdio: "inherit",
     env: process.env,
@@ -96,7 +85,7 @@ try {
   syncLatestGit();
   cleanOldCache();
   installDeps();
-  startBot();
+  startNatsumi();
 } catch (error) {
   console.error(`[Vortexa] startup failed: ${error.message}`);
   process.exit(1);
