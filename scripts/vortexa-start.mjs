@@ -7,7 +7,7 @@ const branch = process.env.BRANCH || process.env.GIT_BRANCH || "main";
 const shouldUpdate = process.env.VORTEXA_AUTO_UPDATE !== "false";
 const shouldInstall = process.env.VORTEXA_NPM_INSTALL !== "false";
 const quiet = process.env.VORTEXA_QUIET !== "false";
-const entrypoint = process.env.VORTEXA_ENTRYPOINT || process.env.START_ENTRYPOINT || process.env.MAIN_FILE || "start.js";
+const entrypoint = process.env.VORTEXA_ENTRYPOINT || process.env.START_ENTRYPOINT || process.env.MAIN_FILE || "bot.ts";
 
 const log = (message) => console.log(`[Vortexa] ${message}`);
 
@@ -24,13 +24,11 @@ const run = (command, args, options = {}) => {
     stdio: quiet ? "pipe" : "inherit",
     ...options,
   });
-
   if (result.status !== 0) {
     const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
     if (output) console.error(output.split("\n").slice(-30).join("\n"));
     throw new Error(`${command} ${args.join(" ")} failed with code ${result.status}`);
   }
-
   return result;
 };
 
@@ -69,11 +67,8 @@ const installDeps = () => {
 };
 
 const startNatsumi = () => {
-  log(`starting NATSUMI with ${entrypoint}...`);
-  const isJs = entrypoint.endsWith(".js") || entrypoint.endsWith(".mjs");
-  const result = isJs
-    ? spawnSync("node", [entrypoint], { cwd: root, stdio: "inherit", env: process.env })
-    : spawnSync("npx", ["tsx", entrypoint], { cwd: root, stdio: "inherit", env: process.env });
+  log(`starting NATSUMI bot with ${entrypoint}...`);
+  const result = spawnSync("npx", ["tsx", entrypoint], { cwd: root, stdio: "inherit", env: process.env });
   process.exit(result.status ?? 0);
 };
 
