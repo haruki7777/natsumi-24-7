@@ -18,6 +18,7 @@ import {
   resetRuntimeLag,
 } from "./utils/runtimeHealth.js";
 import { startPremiumHeartCleanup } from "./utils/premiumHeart.js";
+import { startKoreanbotsGuildCountSync } from "./utils/koreanbotsStats.js";
 
 dotenv.config();
 
@@ -239,6 +240,7 @@ const createClient = () => {
   c.on(Events.ClientReady, async (readyClient) => {
     addLog(`[Discord] Ready as ${readyClient.user.tag} (${readyClient.guilds.cache.size} guilds).`);
     await registerSlashCommands();
+    startKoreanbotsGuildCountSync(readyClient, addLog);
   });
 
   c.on(Events.Error, (e) => addLog(`[Discord] Error: ${e.message}`));
