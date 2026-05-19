@@ -18,18 +18,19 @@ export default {
    * @param {import("discord.js").UserContextMenuCommandInteraction} interaction
    */
   async execute(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
 
     const targetUser = interaction.targetUser;
-    const member = interaction.guild
-      ? await interaction.guild.members.fetch(targetUser.id).catch(() => null)
-      : interaction.targetMember;
-    const fullUser = await interaction.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser);
-    const levelData = interaction.guildId
-      ? await levelDB.findOne({ GuildID: interaction.guildId, UserID: targetUser.id }).lean().catch(() => null)
-      : null;
-    const bannerUrl = fullUser.bannerURL({ size: 1024, dynamic: true });
+    const [member, fullUser, levelData] = await Promise.all([
+      interaction.guild ? interaction.guild.members.fetch(targetUser.id).catch(() => null) : null,
+      interaction.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser),
+      interaction.guildId
+        ? levelDB.findOne({ GuildID: interaction.guildId, UserID: targetUser.id }).lean().catch(() => null)
+        : null,
+    ]);
+
     const avatarUrl = fullUser.displayAvatarURL({ size: 1024, dynamic: true });
+    const bannerUrl = fullUser.bannerURL({ size: 1024, dynamic: true });
     const roles = member?.roles.cache
       .filter((role) => role.name !== "@everyone")
       .sort((a, b) => b.position - a.position)
@@ -62,6 +63,6 @@ export default {
       embed.setImage(bannerUrl);
     }
 
-    await interaction.editReply({ embeds: [embed], components: [row] });
+    return interaction.editReply({ embeds: [embed], components: [row] });
   },
 };

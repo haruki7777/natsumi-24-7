@@ -19,10 +19,7 @@ export default {
     .setName("유저정보")
     .setDescription("유저의 프로필, 서버 정보, 배너를 확인해요.")
     .addUserOption((option) =>
-      option
-        .setName("유저")
-        .setDescription("확인할 유저를 선택해줘.")
-        .setRequired(false),
+      option.setName("유저").setDescription("확인할 유저").setRequired(false),
     ),
 
   /**
@@ -32,15 +29,16 @@ export default {
     await interaction.deferReply();
 
     const targetUser = interaction.options.getUser("유저") || interaction.user;
-    const member = interaction.guild
-      ? await interaction.guild.members.fetch(targetUser.id).catch(() => null)
-      : null;
-    const fullUser = await interaction.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser);
-    const bannerUrl = fullUser.bannerURL({ size: 1024, dynamic: true });
+    const [member, fullUser] = await Promise.all([
+      interaction.guild ? interaction.guild.members.fetch(targetUser.id).catch(() => null) : null,
+      interaction.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser),
+    ]);
+
     const avatarUrl = fullUser.displayAvatarURL({ size: 1024, dynamic: true });
-    const highestRole = member?.roles.highest?.id === interaction.guildId ? "없음" : member?.roles.highest?.toString() || "없음";
-    const joinedAt = member?.joinedAt ? time(member.joinedAt, "R") : "서버 정보 없음";
-    const status = statusLabel[member?.presence?.status] || "확인 안 됨";
+    const bannerUrl = fullUser.bannerURL({ size: 1024, dynamic: true });
+    const highestRole = member?.roles.highest?.id === interaction.guildId
+      ? "없음"
+      : member?.roles.highest?.toString() || "없음";
 
     const embed = new EmbedBuilder()
       .setColor("#ff7ab6")
@@ -51,8 +49,8 @@ export default {
         { name: "유저", value: `${fullUser} \`${fullUser.tag || fullUser.username}\``, inline: false },
         { name: "ID", value: `\`${fullUser.id}\``, inline: true },
         { name: "계정 생성", value: time(fullUser.createdAt, "R"), inline: true },
-        { name: "서버 입장", value: joinedAt, inline: true },
-        { name: "상태", value: status, inline: true },
+        { name: "서버 입장", value: member?.joinedAt ? time(member.joinedAt, "R") : "서버 정보 없음", inline: true },
+        { name: "상태", value: statusLabel[member?.presence?.status] || "확인 안 됨", inline: true },
         { name: "최고 역할", value: highestRole, inline: true },
         { name: "배너", value: bannerUrl ? "아래 버튼으로 확인할 수 있어." : "설정된 배너가 없어.", inline: true },
       )
@@ -67,6 +65,6 @@ export default {
       embed.setImage(bannerUrl);
     }
 
-    await interaction.editReply({ embeds: [embed], components: [row] });
+    return interaction.editReply({ embeds: [embed], components: [row] });
   },
 };

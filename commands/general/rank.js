@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } from "discord.js";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 import levelDB from "../../models/LevelSystem.js";
 import dobakDB from "../../models/dobak.js";
 import dailycheckDB from "../../models/dailycheck.js";
@@ -7,43 +8,41 @@ import GameInventory from "../../models/GameInventory.js";
 import GameTitle from "../../models/GameTitle.js";
 import GameBadge from "../../models/GameBadge.js";
 import { calculateXP } from "../../events/levels.js";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { ensureKoreanFont } from "../../utils/fonts.js";
 
-// Memory cache for background images to reduce network load
-const imageCache = new Map();
-const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+const withTimeout = (promise, ms, fallback = null) =>
+  Promise.race([
+    promise.catch(() => fallback),
+    new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
 
-async function getCachedImage(url) {
-    if (imageCache.has(url)) {
-        const cached = imageCache.get(url);
-        if (Date.now() - cached.timestamp < CACHE_TTL) {
-            return cached.image;
-        }
-    }
-    try {
-        // Load with 3 second timeout
-        const imgPromise = loadImage(url);
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Image Load Timeout")), 3000)
-        );
-        const img = await Promise.race([imgPromise, timeoutPromise]);
-        
-        imageCache.set(url, { image: img, timestamp: Date.now() });
-        return img;
-    } catch (e) {
-        console.warn(`[Canvas] Failed to load ${url}: ${e.message}`);
-        return null;
-    }
+function roundedRect(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+function drawTextFit(ctx, text, x, y, maxWidth) {
+  let value = String(text || "");
+  while (value.length > 2 && ctx.measureText(value).width > maxWidth) {
+    value = `${value.slice(0, -2)}...`;
+  }
+  ctx.fillText(value, x, y);
 }
 
 export default {
   data: new SlashCommandBuilder()
     .setName("랭크")
-    .setDescription("여우의 눈으로 너의 위업과 주머니 사정을 감시하겠어! 콘콘!")
+    .setDescription("서버 레벨, 경험치, 금전, 웹상점 칭호와 배지를 랭크카드로 보여줘요.")
     .addUserOption((option) =>
-      option.setName("유저").setDescription("정보를 엿볼 대상을 골라봐!")
+      option.setName("유저").setDescription("랭크카드를 확인할 유저").setRequired(false),
     ),
+
   /**
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
@@ -52,197 +51,138 @@ export default {
     const guildId = interaction.guildId;
 
     if (!guildId) {
-      return interaction.reply({ content: "이봐! 서버에서만 내 눈을 피하려고? 소용없어!", ephemeral: true });
+      return interaction.reply({ content: "서버 안에서만 랭크카드를 볼 수 있어.", ephemeral: true });
     }
 
     await interaction.deferReply();
 
-    // Fetch all data in parallel
     const [levelData, moneyData, attendanceData, setupData, gameInv, gameTitles, gameBadges] = await Promise.all([
-      levelDB.findOne({ GuildID: guildId, UserID: target.id }).lean(),
-      dobakDB.findOne({ userid: target.id }).lean(),
-      dailycheckDB.findOne({ userid: target.id }).lean(),
-      featuresDB.findOne({ GuildID: guildId }).lean(),
+      levelDB.findOne({ GuildID: guildId, UserID: target.id }).lean().catch(() => null),
+      dobakDB.findOne({ userid: target.id }).lean().catch(() => null),
+      dailycheckDB.findOne({ userid: target.id }).lean().catch(() => null),
+      featuresDB.findOne({ GuildID: guildId }).lean().catch(() => null),
       GameInventory.findOne({ userId: target.id }).lean().catch(() => null),
       GameTitle.find().lean().catch(() => []),
       GameBadge.find().lean().catch(() => []),
     ]);
 
     if (!setupData || !setupData.LevelSystem?.Enabled) {
-      return interaction.editReply("흥! 이 서버는 아직 내 랭크 시스템을 받아들일 준비가 안 됐나 보네. \n관리자보고 `/레벨설정 상태: 온`이라고 시켜봐! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ");
+      return interaction.editReply("이 서버는 아직 랭크 시스템이 켜져 있지 않아. 관리자에게 `/레벨설정 상태: 온`으로 켜달라고 해줘.");
     }
 
-    const level = levelData?.level || 1;
-    const xp = levelData?.xp || 0;
-    const money = moneyData?.money || 0;
-    const count = attendanceData?.count || 0;
+    const level = Number(levelData?.level || 1);
+    const xp = Number(levelData?.xp || 0);
     const needed = calculateXP(level);
+    const progress = needed > 0 ? Math.min(1, xp / needed) : 0;
+    const money = Number(moneyData?.money || 0);
+    const attendance = Number(attendanceData?.count || 0);
     const ownedTitleKeys = new Set(gameInv?.titles || []);
     const ownedBadgeKeys = new Set(gameInv?.badges || []);
     const activeTitle = gameTitles.find((item) => item.key === gameInv?.activeTitle)
       || gameTitles.find((item) => ownedTitleKeys.has(item.key));
     const rankBadges = gameBadges.filter((item) => ownedBadgeKeys.has(item.key)).slice(0, 5);
-    const activeTitleText = activeTitle ? `${activeTitle.emoji || ""} ${activeTitle.name}`.trim() : "NATSUMI PLAYER";
+    const titleText = activeTitle ? `${activeTitle.emoji || ""} ${activeTitle.name}`.trim() : "NATSUMI PLAYER";
     const badgeText = rankBadges.length
       ? rankBadges.map((item) => `${item.emoji || ""} ${item.name}`.trim()).join("  ")
       : "배지 없음";
-    
-    // Background Selection
-    const defaultBG = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop";
-    let backgroundUrl = setupData?.LevelSystem?.Background;
-    
-    // Validate background URL - omit if clearly placeholder or invalid
-    if (!backgroundUrl || backgroundUrl === "default" || backgroundUrl.length < 10) {
-        backgroundUrl = defaultBG;
-    }
-    
-    // Safety check for known broken Discord link template
-    if (backgroundUrl.includes("cdn.discordapp.com/attachments/965674056080826368/1003622130921001040/background.png")) {
-        backgroundUrl = defaultBG;
-    }
-    
-    // Ensure fonts are ready (Async check)
-    await ensureKoreanFont();
 
-    // Canvas Generation
-    const canvas = createCanvas(900, 300);
-    const ctx = canvas.getContext("2d");
-
-    // Drawing Logic
     try {
-        // Helper to draw rounded rectangle using standard paths
-        const drawRoundedRect = (ctx, x, y, width, height, radius) => {
-            ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
-        };
+      await withTimeout(ensureKoreanFont(), 1200);
 
-        // 1. Draw Background
-        let bgImg = null;
-        if (backgroundUrl !== defaultBG) {
-            bgImg = await getCachedImage(backgroundUrl);
-        }
-        if (!bgImg) {
-            bgImg = await getCachedImage(defaultBG);
-        }
+      const canvas = createCanvas(900, 300);
+      const ctx = canvas.getContext("2d");
 
-        if (bgImg) {
-            // Center crop/fill background
-            const scale = Math.max(canvas.width / bgImg.width, canvas.height / bgImg.height);
-            const x = (canvas.width - bgImg.width * scale) / 2;
-            const y = (canvas.height - bgImg.height * scale) / 2;
-            ctx.drawImage(bgImg, x, y, bgImg.width * scale, bgImg.height * scale);
-        } else {
-            ctx.fillStyle = "#2c2f33";
-            ctx.fillRect(0, 0, 900, 300);
-        }
+      const gradient = ctx.createLinearGradient(0, 0, 900, 300);
+      gradient.addColorStop(0, "#23112f");
+      gradient.addColorStop(0.45, "#42204d");
+      gradient.addColorStop(1, "#ff8a4d");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 900, 300);
 
-        // 2. Semi-transparent overlay
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-        drawRoundedRect(ctx, 20, 20, 860, 260, 15);
-        ctx.fill();
+      ctx.globalAlpha = 0.22;
+      for (let x = -40; x < 940; x += 32) {
+        ctx.fillStyle = x % 64 === 0 ? "#ffd166" : "#ff7ab6";
+        ctx.fillRect(x, 0, 12, 300);
+      }
+      ctx.globalAlpha = 1;
 
-        // 3. Draw Avatar
-        const avatarUrl = target.displayAvatarURL({ extension: "png", size: 256 }) || target.defaultAvatarURL;
-        const avatar = await loadImage(avatarUrl).catch(() => null);
-        
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(110, 150, 70, 0, Math.PI * 2);
-        ctx.clip();
-        if (avatar) {
-            ctx.drawImage(avatar, 40, 80, 140, 140);
-        } else {
-            ctx.fillStyle = "#FF7F50";
-            ctx.fill();
-        }
-        ctx.restore();
+      ctx.fillStyle = "rgba(9, 6, 17, 0.78)";
+      roundedRect(ctx, 24, 24, 852, 252, 22);
+      ctx.fill();
+      ctx.strokeStyle = "#ffcf5a";
+      ctx.lineWidth = 5;
+      ctx.stroke();
 
-        // 4. Draw Texts
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "bold 34px NanumGothic";
-        ctx.fillText(target.username, 210, 85);
+      const avatarUrl = target.displayAvatarURL({ extension: "png", size: 256 });
+      const avatar = await withTimeout(loadImage(avatarUrl), 1800);
+      ctx.save();
+      roundedRect(ctx, 54, 70, 150, 150, 26);
+      ctx.clip();
+      if (avatar) {
+        ctx.drawImage(avatar, 54, 70, 150, 150);
+      } else {
+        ctx.fillStyle = "#ff7ab6";
+        ctx.fillRect(54, 70, 150, 150);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 54px NanumGothic";
+        ctx.fillText("N", 105, 160);
+      }
+      ctx.restore();
+      ctx.strokeStyle = "#ffe8a3";
+      ctx.lineWidth = 5;
+      roundedRect(ctx, 54, 70, 150, 150, 26);
+      ctx.stroke();
 
-        ctx.fillStyle = "#FF7F50";
-        ctx.font = "bold 22px NanumGothic";
-        ctx.fillText(`📊 위계: ${level}`, 210, 125);
-        ctx.fillStyle = "#FFD1E7";
-        ctx.font = "bold 18px NanumGothic";
-        ctx.fillText(activeTitleText, 350, 124);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 34px NanumGothic";
+      drawTextFit(ctx, target.globalName || target.username, 234, 78, 420);
 
-        // Progress Bar
-        const progress = Math.min(1, xp / needed);
-        const barWidth = 630;
-        const barHeight = 35;
-        const barX = 210;
-        const barY = 145;
+      ctx.fillStyle = "#ffd1e7";
+      ctx.font = "bold 20px NanumGothic";
+      drawTextFit(ctx, titleText, 234, 112, 520);
 
-        // Trace
-        ctx.fillStyle = "#333333";
-        drawRoundedRect(ctx, barX, barY, barWidth, barHeight, 5);
-        ctx.fill();
+      ctx.fillStyle = "#ffcf5a";
+      ctx.font = "bold 30px NanumGothic";
+      ctx.fillText(`Lv.${level}`, 720, 80);
 
-        // Fill
-        if (progress > 0) {
-            ctx.fillStyle = "#FF8C00";
-            drawRoundedRect(ctx, barX, barY, Math.max(10, barWidth * progress), barHeight, 5);
-            ctx.fill();
-        }
+      ctx.fillStyle = "#1a1024";
+      roundedRect(ctx, 234, 135, 590, 34, 12);
+      ctx.fill();
+      ctx.fillStyle = "#ff8f3d";
+      roundedRect(ctx, 234, 135, Math.max(18, 590 * progress), 34, 12);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 16px NanumGothic";
+      ctx.textAlign = "center";
+      ctx.fillText(`${xp.toLocaleString()} / ${needed.toLocaleString()} XP (${(progress * 100).toFixed(1)}%)`, 529, 158);
+      ctx.textAlign = "left";
 
-        // XP Text
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "16px NanumGothic";
-        ctx.textAlign = "center";
-        ctx.fillText(`${xp.toLocaleString()} / ${needed.toLocaleString()} 영력 (${(progress * 100).toFixed(1)}%)`, barX + barWidth/2, barY + 23);
-        ctx.textAlign = "left";
+      ctx.font = "bold 18px NanumGothic";
+      ctx.fillStyle = "#ffe8a3";
+      ctx.fillText(`금전 ${money.toLocaleString()}`, 234, 205);
+      ctx.fillStyle = "#b9fbc0";
+      ctx.fillText(`출석 ${attendance.toLocaleString()}회`, 430, 205);
 
-        // 5. Money & Attendance
-        ctx.font = "bold 20px NanumGothic";
-        ctx.fillStyle = "#FFD700";
-        ctx.fillText(`💰 주머니: ${money.toLocaleString()} 금전`, 210, 215);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 16px NanumGothic";
+      drawTextFit(ctx, badgeText, 234, 244, 570);
 
-        ctx.fillStyle = "#00FF7F";
-        ctx.fillText(`📅 성실도: ${count}회 출석`, 210, 255);
-        ctx.fillStyle = "#FFE8A3";
-        ctx.font = "bold 16px NanumGothic";
-        ctx.fillText(badgeText, 430, 255);
-
-        const attachment = new AttachmentBuilder(await canvas.encode("png"), { name: `rank-${target.id}.png` });
-        await interaction.editReply({ 
-            content: `콘콘! ${target.username}의 서열 기록을 확인했어! 별로 관심 있는 건 아니지만 말이야! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ`,
-            files: [attachment] 
-        });
-
+      const attachment = new AttachmentBuilder(await canvas.encode("png"), { name: `rank-${target.id}.png` });
+      return interaction.editReply({ content: `${target.username}님의 랭크카드야.`, files: [attachment] });
     } catch (error) {
-        console.error("[Rank Optimization Error]", error);
-        
-        const progressRaw = needed > 0 ? xp / needed : 0;
-        const progressPercent = (Math.min(1, progressRaw) * 100).toFixed(1);
-
-        const fallbackEmbed = new EmbedBuilder()
-            .setTitle("🏮 서열 정보 (이미지 로드 실패)")
-            .setDescription(`**${target.username}** 녀석의 기록을 이미지로 그리려다 실패했어! 대신 정보만 알려줄게!\n\n` + 
-                `**위계:** Lv.${level}\n` +
-                `**영력:** ${xp.toLocaleString()} / ${needed.toLocaleString()} (${progressPercent}%)\n` +
-                `**금전:** ${money.toLocaleString()} 금전\n` +
-                `**출석:** ${count}회`)
-            .setThumbnail(target.displayAvatarURL())
-            .setColor("#FF7F50")
-            .setFooter({ text: "흥! 붓이 미끄러진 거니까 착각하지 마!" });
-
-        await interaction.editReply({ 
-            content: "으익! 붓이 미끄러졌어! (이미지 생성 오류) 대신 정보만 알려줄게! 콘콘!",
-            embeds: [fallbackEmbed],
-            files: []
-        });
+      console.error("[RankCard] render failed:", error);
+      const embed = new EmbedBuilder()
+        .setColor("#ff7ab6")
+        .setTitle(`${target.username} 랭크`)
+        .setThumbnail(target.displayAvatarURL({ size: 256, dynamic: true }))
+        .addFields(
+          { name: "레벨", value: `Lv.${level}`, inline: true },
+          { name: "경험치", value: `${xp.toLocaleString()} / ${needed.toLocaleString()} XP`, inline: true },
+          { name: "금전", value: `${money.toLocaleString()} 금전`, inline: true },
+          { name: "칭호", value: titleText, inline: false },
+          { name: "배지", value: badgeText, inline: false },
+        );
+      return interaction.editReply({ content: "이미지 생성이 잠깐 실패해서 텍스트 카드로 보여줄게.", embeds: [embed] });
     }
   },
 };

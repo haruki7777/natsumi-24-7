@@ -26,7 +26,14 @@ export const postKoreanbotsGuildCount = async (client, logger = console.log, opt
   if (!client?.isReady?.()) return { ok: false, skipped: "client_not_ready" };
   if (posting) return { ok: true, skipped: "in_progress" };
 
-  const servers = client.guilds.cache.size;
+  let servers = client.guilds.cache.size;
+  try {
+    const fetched = await client.guilds.fetch();
+    servers = fetched?.size || servers;
+  } catch (error) {
+    logger(`[KoreanBots] Using cached guild count: ${servers} (${error.message})`);
+  }
+
   if (!options.force && lastPostedGuildCount === servers) return { ok: true, skipped: "unchanged", servers };
 
   posting = true;
@@ -65,5 +72,6 @@ export const startKoreanbotsGuildCountSync = (client, logger = console.log) => {
 
   client.on("guildCreate", () => postKoreanbotsGuildCount(client, logger, { force: true }).catch(() => {}));
   client.on("guildDelete", () => postKoreanbotsGuildCount(client, logger, { force: true }).catch(() => {}));
+  client.on("ready", () => postKoreanbotsGuildCount(client, logger, { force: true }).catch(() => {}));
   return statsTimer;
 };

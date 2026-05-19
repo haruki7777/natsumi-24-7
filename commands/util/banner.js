@@ -18,7 +18,7 @@ export default {
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
 
     const targetUser = interaction.options.getUser("유저") || interaction.user;
     const user = await interaction.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser);
@@ -38,6 +38,6 @@ export default {
       new ButtonBuilder().setLabel("배너 원본 열기").setStyle(ButtonStyle.Link).setURL(bannerUrl),
     );
 
-    await interaction.editReply({ embeds: [embed], components: [row] });
+    return interaction.editReply({ embeds: [embed], components: [row] });
   },
 };
