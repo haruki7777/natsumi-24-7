@@ -49,6 +49,7 @@ export const reloadBotResources = async (client) => {
       if (!fs.statSync(categoryPath).isDirectory()) continue;
 
       for (const file of fs.readdirSync(categoryPath).filter((name) => name.endsWith(".js") || name.endsWith(".ts"))) {
+        if (file === "tts_setup.js" || file === "level_setup.js") continue;
         try {
           const modulePath = path.resolve(categoryPath, file);
           const moduleExports = await importFresh(modulePath);

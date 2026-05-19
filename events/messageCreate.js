@@ -4,6 +4,7 @@ import LearnedData from "../models/LearnedData.js";
 import BannedWords from "../models/BannedWords.js";
 import ProcessedMessage from "../models/ProcessedMessage.js";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
+import DashboardSettings from "../models/DashboardSettings.js";
 import { addXP } from "./levels.js";
 import { generateDistributedContent, getEmotion } from "../utils/ai.js";
 
@@ -277,8 +278,14 @@ export default {
     }
 
     if (message.guild) {
-      featuresDB.findOne({ GuildID: message.guild.id }).lean().then((levelSystemCheck) => {
-        if (levelSystemCheck?.LevelSystem?.Enabled) addXP(message.guild.id, message.author.id, null, message).catch(() => {});
+      Promise.all([
+        featuresDB.findOne({ GuildID: message.guild.id }).lean().catch(() => null),
+        DashboardSettings.findOne({ guildId: message.guild.id }).lean().catch(() => null),
+      ]).then(([levelSystemCheck, dashboardSettings]) => {
+        const dashboardLevelEnabled = dashboardSettings?.features?.level === true;
+        if (dashboardLevelEnabled || levelSystemCheck?.LevelSystem?.Enabled) {
+          addXP(message.guild.id, message.author.id, null, message).catch(() => {});
+        }
       }).catch(() => {});
     }
 

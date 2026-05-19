@@ -1,9 +1,10 @@
-import { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } from "discord.js";
+﻿import { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } from "discord.js";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import levelDB from "../../models/LevelSystem.js";
 import dobakDB from "../../models/dobak.js";
 import dailycheckDB from "../../models/dailycheck.js";
 import featuresDB from "../../models/Features.js";
+import DashboardSettings from "../../models/DashboardSettings.js";
 import GameInventory from "../../models/GameInventory.js";
 import GameTitle from "../../models/GameTitle.js";
 import GameBadge from "../../models/GameBadge.js";
@@ -37,37 +38,39 @@ function drawTextFit(ctx, text, x, y, maxWidth) {
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("랭크")
-    .setDescription("서버 레벨, 경험치, 금전, 웹상점 칭호와 배지를 랭크카드로 보여줘요.")
+    .setName("??겕")
+    .setDescription("?쒕쾭 ?덈꺼, 寃쏀뿕移? 湲덉쟾, ?뱀긽??移?샇? 諛곗?瑜???겕移대뱶濡?蹂댁뿬以섏슂.")
     .addUserOption((option) =>
-      option.setName("유저").setDescription("랭크카드를 확인할 유저").setRequired(false),
+      option.setName("?좎?").setDescription("??겕移대뱶瑜??뺤씤???좎?").setRequired(false),
     ),
 
   /**
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    const target = interaction.options.getUser("유저") || interaction.user;
+    const target = interaction.options.getUser("?좎?") || interaction.user;
     const guildId = interaction.guildId;
 
     if (!guildId) {
-      return interaction.reply({ content: "서버 안에서만 랭크카드를 볼 수 있어.", ephemeral: true });
+      return interaction.reply({ content: "?쒕쾭 ?덉뿉?쒕쭔 ??겕移대뱶瑜?蹂????덉뼱.", ephemeral: true });
     }
 
     await interaction.deferReply();
 
-    const [levelData, moneyData, attendanceData, setupData, gameInv, gameTitles, gameBadges] = await Promise.all([
+    const [levelData, moneyData, attendanceData, setupData, dashboardSettings, gameInv, gameTitles, gameBadges] = await Promise.all([
       levelDB.findOne({ GuildID: guildId, UserID: target.id }).lean().catch(() => null),
       dobakDB.findOne({ userid: target.id }).lean().catch(() => null),
       dailycheckDB.findOne({ userid: target.id }).lean().catch(() => null),
       featuresDB.findOne({ GuildID: guildId }).lean().catch(() => null),
+      DashboardSettings.findOne({ guildId }).lean().catch(() => null),
       GameInventory.findOne({ userId: target.id }).lean().catch(() => null),
       GameTitle.find().lean().catch(() => []),
       GameBadge.find().lean().catch(() => []),
     ]);
 
-    if (!setupData || !setupData.LevelSystem?.Enabled) {
-      return interaction.editReply("이 서버는 아직 랭크 시스템이 켜져 있지 않아. 관리자에게 `/레벨설정 상태: 온`으로 켜달라고 해줘.");
+    const levelEnabled = dashboardSettings?.features?.level === true || setupData?.LevelSystem?.Enabled;
+    if (!levelEnabled) {
+      return interaction.editReply("이 서버는 아직 랭크 시스템이 켜져 있지 않아요. 관리자에게 `/나츠미서버설정`으로 대시보드에서 레벨 기능을 켜달라고 해줘.");
     }
 
     const level = Number(levelData?.level || 1);
@@ -84,7 +87,7 @@ export default {
     const titleText = activeTitle ? `${activeTitle.emoji || ""} ${activeTitle.name}`.trim() : "NATSUMI PLAYER";
     const badgeText = rankBadges.length
       ? rankBadges.map((item) => `${item.emoji || ""} ${item.name}`.trim()).join("  ")
-      : "배지 없음";
+      : "諛곗? ?놁쓬";
 
     try {
       await withTimeout(ensureKoreanFont(), 1200);
@@ -168,7 +171,7 @@ export default {
       drawTextFit(ctx, badgeText, 234, 244, 570);
 
       const attachment = new AttachmentBuilder(await canvas.encode("png"), { name: `rank-${target.id}.png` });
-      return interaction.editReply({ content: `${target.username}님의 랭크카드야.`, files: [attachment] });
+      return interaction.editReply({ content: `${target.username}님의 랭크카드예요.`, files: [attachment] });
     } catch (error) {
       console.error("[RankCard] render failed:", error);
       const embed = new EmbedBuilder()
@@ -182,7 +185,7 @@ export default {
           { name: "칭호", value: titleText, inline: false },
           { name: "배지", value: badgeText, inline: false },
         );
-      return interaction.editReply({ content: "이미지 생성이 잠깐 실패해서 텍스트 카드로 보여줄게.", embeds: [embed] });
+      return interaction.editReply({ content: "이미지 생성이 잠시 실패해서 텍스트 카드로 보여줄게.", embeds: [embed] });
     }
   },
 };

@@ -22,6 +22,7 @@ const dashboardSettingsSchema = new Schema({
     ticket: { type: Boolean, default: true },
     tts: { type: Boolean, default: false },
     emojiUpscale: { type: Boolean, default: false },
+    level: { type: Boolean, default: false },
   },
   welcome: {
     enabled: { type: Boolean, default: false },
