@@ -3,6 +3,9 @@ import levelDB from "../../models/LevelSystem.js";
 import dobakDB from "../../models/dobak.js";
 import dailycheckDB from "../../models/dailycheck.js";
 import featuresDB from "../../models/Features.js";
+import GameInventory from "../../models/GameInventory.js";
+import GameTitle from "../../models/GameTitle.js";
+import GameBadge from "../../models/GameBadge.js";
 import { calculateXP } from "../../events/levels.js";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { ensureKoreanFont } from "../../utils/fonts.js";
@@ -55,11 +58,14 @@ export default {
     await interaction.deferReply();
 
     // Fetch all data in parallel
-    const [levelData, moneyData, attendanceData, setupData] = await Promise.all([
+    const [levelData, moneyData, attendanceData, setupData, gameInv, gameTitles, gameBadges] = await Promise.all([
       levelDB.findOne({ GuildID: guildId, UserID: target.id }).lean(),
       dobakDB.findOne({ userid: target.id }).lean(),
       dailycheckDB.findOne({ userid: target.id }).lean(),
       featuresDB.findOne({ GuildID: guildId }).lean(),
+      GameInventory.findOne({ userId: target.id }).lean().catch(() => null),
+      GameTitle.find().lean().catch(() => []),
+      GameBadge.find().lean().catch(() => []),
     ]);
 
     if (!setupData || !setupData.LevelSystem?.Enabled) {
@@ -71,6 +77,15 @@ export default {
     const money = moneyData?.money || 0;
     const count = attendanceData?.count || 0;
     const needed = calculateXP(level);
+    const ownedTitleKeys = new Set(gameInv?.titles || []);
+    const ownedBadgeKeys = new Set(gameInv?.badges || []);
+    const activeTitle = gameTitles.find((item) => item.key === gameInv?.activeTitle)
+      || gameTitles.find((item) => ownedTitleKeys.has(item.key));
+    const rankBadges = gameBadges.filter((item) => ownedBadgeKeys.has(item.key)).slice(0, 5);
+    const activeTitleText = activeTitle ? `${activeTitle.emoji || ""} ${activeTitle.name}`.trim() : "NATSUMI PLAYER";
+    const badgeText = rankBadges.length
+      ? rankBadges.map((item) => `${item.emoji || ""} ${item.name}`.trim()).join("  ")
+      : "배지 없음";
     
     // Background Selection
     const defaultBG = "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=1000&auto=format&fit=crop";
@@ -159,6 +174,9 @@ export default {
         ctx.fillStyle = "#FF7F50";
         ctx.font = "bold 22px NanumGothic";
         ctx.fillText(`📊 위계: ${level}`, 210, 125);
+        ctx.fillStyle = "#FFD1E7";
+        ctx.font = "bold 18px NanumGothic";
+        ctx.fillText(activeTitleText, 350, 124);
 
         // Progress Bar
         const progress = Math.min(1, xp / needed);
@@ -193,6 +211,9 @@ export default {
 
         ctx.fillStyle = "#00FF7F";
         ctx.fillText(`📅 성실도: ${count}회 출석`, 210, 255);
+        ctx.fillStyle = "#FFE8A3";
+        ctx.font = "bold 16px NanumGothic";
+        ctx.fillText(badgeText, 430, 255);
 
         const attachment = new AttachmentBuilder(await canvas.encode("png"), { name: `rank-${target.id}.png` });
         await interaction.editReply({ 

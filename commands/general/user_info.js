@@ -1,107 +1,72 @@
 import {
-  SlashCommandBuilder,
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  EmbedBuilder,
+  SlashCommandBuilder,
+  time,
 } from "discord.js";
 
-let UserStatus = {
+const statusLabel = {
   online: "온라인",
-  idle: "자리비움",
-  dnd: "다른 용무중",
+  idle: "자리 비움",
+  dnd: "방해 금지",
   offline: "오프라인",
-};
-
-let ActivitiesType = {
-  0: "하는 중",
-  1: "방송 중",
-  2: "듣는 중",
-  3: "시청 중",
-  4: "커스텀",
-  5: "참가 중",
 };
 
 export default {
   data: new SlashCommandBuilder()
     .setName("유저정보")
-    .setDescription("숲에 머무는 인간의 정보를 엿볼까? 콘콘!")
-    .addUserOption((op) =>
-      op
+    .setDescription("유저의 프로필, 서버 정보, 배너를 확인해요.")
+    .addUserOption((option) =>
+      option
         .setName("유저")
-        .setDescription("누구의 정보를 캐내고 싶은 거야?")
-        .setRequired(false)
+        .setDescription("확인할 유저를 선택해줘.")
+        .setRequired(false),
     ),
+
   /**
    * @param {import("discord.js").ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
     await interaction.deferReply();
-    const user = interaction.options.getMember("유저") || interaction.member;
-    const isSelf = user.id === interaction.user.id;
 
-    const MainEmbed = new EmbedBuilder()
-      .setTitle("🦊 유저 정보 보관함")
-      .setDescription(isSelf 
-        ? "흥! 뭐? 네 정보가 그렇게 궁금해? 어차피 내가 다 꿰뚫어 보고 있거든! ♥(⸝⸝⸝ᵒ̴̶̷̥́ ᵕ ก̀⸝⸝⸝)ෆ" 
-        : `콘콘! ${user.user.username} 녀석의 정보를 캐내려는 거야? 너도 참 취향 독특하네! 스토커는 아니겠지?`)
-      .setColor("#FF7F50")
-      .setThumbnail(user.user.displayAvatarURL({ size: 512 }))
+    const targetUser = interaction.options.getUser("유저") || interaction.user;
+    const member = interaction.guild
+      ? await interaction.guild.members.fetch(targetUser.id).catch(() => null)
+      : null;
+    const fullUser = await interaction.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser);
+    const bannerUrl = fullUser.bannerURL({ size: 1024, dynamic: true });
+    const avatarUrl = fullUser.displayAvatarURL({ size: 1024, dynamic: true });
+    const highestRole = member?.roles.highest?.id === interaction.guildId ? "없음" : member?.roles.highest?.toString() || "없음";
+    const joinedAt = member?.joinedAt ? time(member.joinedAt, "R") : "서버 정보 없음";
+    const status = statusLabel[member?.presence?.status] || "확인 안 됨";
+
+    const embed = new EmbedBuilder()
+      .setColor("#ff7ab6")
+      .setAuthor({ name: `${fullUser.username} 프로필`, iconURL: avatarUrl })
+      .setTitle("나츠미 유저정보")
+      .setThumbnail(avatarUrl)
       .addFields(
-        { name: "🏮 정체", value: `**${user.user.username}**\n(${user.user.tag})`, inline: true },
-        { name: "🆔 식별 부적", value: `\`${user.id}\``, inline: true },
-        {
-          name: "🍃 상태",
-          value: `**${UserStatus[user.presence?.status] || "어딘가 숨어있음"}**`,
-          inline: true,
-        },
-        { name: "🎋 가장 높은 위계", value: `**<@&${user.roles.highest.id}>**`, inline: true },
-        {
-          name: "🐣 세상에 태어난 날",
-          value: `**<t:${Math.round(user.user.createdTimestamp / 1000)}:D>**`,
-          inline: true,
-        },
-        {
-          name: "⛩️ 숲에 들어온 날",
-          value: `**<t:${Math.round(user.joinedTimestamp / 1000)}:D>**`,
-          inline: true,
-        }
+        { name: "유저", value: `${fullUser} \`${fullUser.tag || fullUser.username}\``, inline: false },
+        { name: "ID", value: `\`${fullUser.id}\``, inline: true },
+        { name: "계정 생성", value: time(fullUser.createdAt, "R"), inline: true },
+        { name: "서버 입장", value: joinedAt, inline: true },
+        { name: "상태", value: status, inline: true },
+        { name: "최고 역할", value: highestRole, inline: true },
+        { name: "배너", value: bannerUrl ? "아래 버튼으로 확인할 수 있어." : "설정된 배너가 없어.", inline: true },
       )
-      .setFooter({ text: "여우의 눈은 모든 걸 지켜보고 있다구!" });
-      
-    if (user.presence?.activities.length > 0) {
-      const DetailActivities = new ButtonBuilder()
-        .setCustomId(`check_activity`)
-        .setLabel("비밀 활동 엿보기")
-        .setStyle(ButtonStyle.Success);
+      .setFooter({ text: `요청자: ${interaction.user.username}` })
+      .setTimestamp();
 
-      const msg = await interaction.editReply({
-        embeds: [MainEmbed],
-        components: [new ActionRowBuilder().addComponents(DetailActivities)],
-      });
-
-      const collector = msg.createMessageComponentCollector({
-        filter: (i) => i.user.id === interaction.user.id,
-        time: 60000,
-      });
-
-      collector.on("collect", async (i) => {
-        const CheckEmbed = new EmbedBuilder()
-          .setTitle("🦊 활동 상세 기록")
-          .setDescription("무슨 수상한 짓을 하고 있는지 다 적혀있다구!")
-          .setColor("#FF7F50");
-          
-        user.presence.activities.forEach((act, index) => {
-          CheckEmbed.addFields({
-            name: `기록 #${index + 1}`,
-            value: `**내용:** ${act.name}\n**상황:** ${act.state || "평범함"}\n**타입:** ${ActivitiesType[act.type]}`,
-          });
-        });
-        
-        i.reply({ embeds: [CheckEmbed], ephemeral: true });
-      });
-    } else {
-      await interaction.editReply({ embeds: [MainEmbed] });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setLabel("아바타 보기").setStyle(ButtonStyle.Link).setURL(avatarUrl),
+    );
+    if (bannerUrl) {
+      row.addComponents(new ButtonBuilder().setLabel("배너 보기").setStyle(ButtonStyle.Link).setURL(bannerUrl));
+      embed.setImage(bannerUrl);
     }
+
+    await interaction.editReply({ embeds: [embed], components: [row] });
   },
 };

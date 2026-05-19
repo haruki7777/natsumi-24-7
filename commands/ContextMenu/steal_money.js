@@ -1,91 +1,103 @@
 import {
-    ContextMenuCommandBuilder,
-    ApplicationCommandType,
-    EmbedBuilder,
-  } from "discord.js";
-  import dobak_Schema from "../../models/dobak.js";
-  import { addXP } from "../../events/levels.js";
-  
-  export default {
-    data: new ContextMenuCommandBuilder()
-      .setName("돈 서리하기")
-      .setType(ApplicationCommandType.User),
-    /**
-     * @param {import("discord.js").UserContextMenuCommandInteraction} interaction
-     */
-    async execute(interaction) {
-      if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true });
-  
-      const targetUser = interaction.targetUser;
-      const executor = interaction.user;
-  
-      if (targetUser.id === executor.id) {
-        return interaction.editReply({ content: "❌ **자신의 지갑을 서리하겠다구? 바보야? 그건 그냥 주머니 옮기기잖아!**" });
-      }
-  
-      if (targetUser.bot) {
-        return interaction.editReply({ content: "❌ **봇의 지갑은 텅 비어있어! 쇠붙이밖에 안 나올걸?**" });
-      }
-  
-      // Fetch both users data
-      const executorData = await dobak_Schema.findOne({ userid: executor.id });
-      const targetData = await dobak_Schema.findOne({ userid: targetUser.id });
-  
-      if (!executorData) {
-        return interaction.editReply({ content: "❌ **너는 아직 빈털터리잖아! `/출석체크`부터 하고 오라구!**" });
-      }
-  
-      if (!targetData || targetData.money < 1000) {
-        return interaction.editReply({ content: "❌ **상대방이 너무 가난해서 털어갈 게 없어... 불쌍하지도 않아? 콘콘!**" });
-      }
-  
-      const chance = Math.random() * 100;
-      const success = chance <= 15; // 15% success rate (85% fail)
-  
-      if (success) {
-        // Success: Steal 1% ~ 5% of target's money
-        const stealPercent = (Math.random() * 4 + 1) / 100;
-        const stealAmount = Math.floor(targetData.money * stealPercent);
-        const finalSteal = Math.min(stealAmount, 50000); // 캡(Cap) 5만원
-  
-        await dobak_Schema.updateOne({ userid: executor.id }, { $inc: { money: finalSteal } });
-        await dobak_Schema.updateOne({ userid: targetUser.id }, { $inc: { money: -finalSteal } });
-  
-        // Award some XP for "stealth"
-        if (interaction.guildId) await addXP(interaction.guildId, executor.id, 30, interaction);
-  
-        const embed = new EmbedBuilder()
-          .setTitle("🧤 서리 대성공! (살금살금)")
-          .setDescription(`**${targetUser.username}**의 지갑에서 몰래 \`${finalSteal.toLocaleString()}\`금전을 빼냈어!\n\n나츠미는 아무것도 못 본 걸로 해줄게... (흥!)`)
-          .addFields(
-            { name: "💰 획득 금액", value: `\`+${finalSteal.toLocaleString()}\` 금전`, inline: true },
-            { name: "💳 현재 주머니", value: `\`${(executorData.money + finalSteal).toLocaleString()}\` 금전`, inline: true }
-          )
-          .setColor("#2ECC71")
-          .setThumbnail("https://cdn-icons-png.flaticon.com/512/1000/1000946.png")
-          .setTimestamp();
-  
-        return interaction.editReply({ embeds: [embed] });
-      } else {
-        // Failure: Pay fine (20% of executor's money or min 2000)
-        const fine = Math.max(2000, Math.floor(executorData.money * 0.05));
-        const finalFine = Math.min(fine, 30000); // 캡(Cap) 3만원
-  
-        await dobak_Schema.updateOne({ userid: executor.id }, { $inc: { money: -finalFine } });
-        await dobak_Schema.updateOne({ userid: targetUser.id }, { $inc: { money: finalFine } });
-  
-        const embed = new EmbedBuilder()
-          .setTitle("🚨 서리 실패! (딱 걸렸어!)")
-          .setDescription(`**${targetUser.username}**의 지갑을 건드리다가 나츠미한테 딱 걸렸네!!\n\n합의금으로 \`${finalFine.toLocaleString()}\`금전을 상대방에게 줬어. ㅋㅋㅋㅋ 꼴좋다구!`)
-          .addFields(
-            { name: "💸 지출 금액", value: `\`-${finalFine.toLocaleString()}\` 금전`, inline: true },
-            { name: "💳 현재 주머니", value: `\`${(executorData.money - finalFine).toLocaleString()}\` 금전`, inline: true }
-          )
-          .setColor("#E74C3C")
-          .setThumbnail("https://cdn-icons-png.flaticon.com/512/252/252030.png")
-          .setTimestamp();
-  
-        return interaction.editReply({ embeds: [embed] });
-      }
-    },
-  };
+  ActionRowBuilder,
+  ApplicationCommandType,
+  ButtonBuilder,
+  ButtonStyle,
+  ContextMenuCommandBuilder,
+  EmbedBuilder,
+} from "discord.js";
+import dobak_Schema from "../../models/dobak.js";
+import { addXP } from "../../events/levels.js";
+
+const SUCCESS_RATE = 0.03;
+
+export default {
+  data: new ContextMenuCommandBuilder()
+    .setName("돈서리하기")
+    .setType(ApplicationCommandType.User),
+
+  /**
+   * @param {import("discord.js").UserContextMenuCommandInteraction} interaction
+   */
+  async execute(interaction) {
+    if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true });
+
+    const targetUser = interaction.targetUser;
+    const executor = interaction.user;
+
+    if (targetUser.id === executor.id) {
+      return interaction.editReply({ content: "자기 주머니는 서리할 수 없어. 그건 그냥 주머니 정리야." });
+    }
+    if (targetUser.bot) {
+      return interaction.editReply({ content: "봇 주머니는 털 수 없어. 나츠미가 봇끼리는 봐주기로 했어." });
+    }
+
+    const [executorData, targetData, fullTarget] = await Promise.all([
+      dobak_Schema.findOne({ userid: executor.id }),
+      dobak_Schema.findOne({ userid: targetUser.id }),
+      interaction.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser),
+    ]);
+
+    if (!executorData) {
+      return interaction.editReply({ content: "`/출석체크`로 먼저 금전 정보를 만들어줘." });
+    }
+    if (!targetData || Number(targetData.money || 0) < 1000) {
+      return interaction.editReply({ content: "상대 주머니가 너무 가벼워서 서리할 게 없어." });
+    }
+
+    const bannerUrl = fullTarget.bannerURL({ size: 1024, dynamic: true });
+    const components = bannerUrl
+      ? [new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel("상대 배너 보기").setStyle(ButtonStyle.Link).setURL(bannerUrl))]
+      : [];
+    const success = Math.random() < SUCCESS_RATE;
+
+    if (success) {
+      const stealPercent = 0.005 + Math.random() * 0.015;
+      const finalSteal = Math.max(1, Math.min(Math.floor(Number(targetData.money || 0) * stealPercent), 30000));
+
+      await Promise.all([
+        dobak_Schema.updateOne({ userid: executor.id }, { $inc: { money: finalSteal } }),
+        dobak_Schema.updateOne({ userid: targetUser.id }, { $inc: { money: -finalSteal } }),
+      ]);
+      if (interaction.guildId) await addXP(interaction.guildId, executor.id, 30, interaction);
+
+      const embed = new EmbedBuilder()
+        .setColor("#22c55e")
+        .setTitle("돈서리 성공")
+        .setDescription(`성공 확률 3%를 뚫고 **${targetUser.username}**의 주머니에서 \`${finalSteal.toLocaleString()}\` 금전을 가져왔어.`)
+        .addFields(
+          { name: "성공 확률", value: "3%", inline: true },
+          { name: "획득", value: `+${finalSteal.toLocaleString()} 금전`, inline: true },
+          { name: "현재 금전", value: `${(Number(executorData.money || 0) + finalSteal).toLocaleString()} 금전`, inline: true },
+        )
+        .setThumbnail(fullTarget.displayAvatarURL({ size: 256, dynamic: true }))
+        .setTimestamp();
+
+      return interaction.editReply({ embeds: [embed], components });
+    }
+
+    const currentMoney = Math.max(0, Number(executorData.money || 0));
+    const fine = Math.min(Math.max(5000, Math.floor(currentMoney * 0.08)), 50000, currentMoney);
+
+    if (fine > 0) {
+      await Promise.all([
+        dobak_Schema.updateOne({ userid: executor.id }, { $inc: { money: -fine } }),
+        dobak_Schema.updateOne({ userid: targetUser.id }, { $inc: { money: fine } }),
+      ]);
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor("#ef4444")
+      .setTitle("돈서리 실패")
+      .setDescription(`실패 확률 97%에 걸렸어. **${targetUser.username}**에게 벌금 \`${fine.toLocaleString()}\` 금전을 물어줬어.`)
+      .addFields(
+        { name: "성공 확률", value: "3%", inline: true },
+        { name: "실패 확률", value: "97%", inline: true },
+        { name: "현재 금전", value: `${Math.max(0, currentMoney - fine).toLocaleString()} 금전`, inline: true },
+      )
+      .setThumbnail(fullTarget.displayAvatarURL({ size: 256, dynamic: true }))
+      .setTimestamp();
+
+    return interaction.editReply({ embeds: [embed], components });
+  },
+};
