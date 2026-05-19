@@ -41,6 +41,7 @@ const FAILOVER_LOCK_ID = process.env.BOT_FAILOVER_LOCK_ID || "natsumi-discord-se
 const FAILOVER_LEASE_MS = Number(process.env.BOT_FAILOVER_LEASE_MS || 90000);
 const FAILOVER_HEARTBEAT_MS = Number(process.env.BOT_FAILOVER_HEARTBEAT_MS || 30000);
 const FAILOVER_STANDBY_POLL_MS = Number(process.env.BOT_FAILOVER_STANDBY_POLL_MS || 15000);
+const MEMBER_EVENTS_ENABLED = process.env.MEMBER_EVENTS_ENABLED === "true" || process.env.GUILD_MEMBERS_INTENT === "true";
 
 const discordToken = process.env.TOKEN?.replace(/['"]/g, "").trim();
 const geminiKey = process.env.MY_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
@@ -204,6 +205,7 @@ const createClient = () => {
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
   );
+  if (MEMBER_EVENTS_ENABLED) intents.add(GatewayIntentBits.GuildMembers);
 
   const c = new Client({
     intents,

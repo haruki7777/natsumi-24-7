@@ -1,4 +1,5 @@
 import { ChannelType, Events } from "discord.js";
+import { isCommandDisabled } from "../utils/dashboardSettings.js";
 import { buildPremiumHeartPrompt, checkPremiumHeart } from "../utils/premiumHeart.js";
 
 const HEART_REQUIRED_COMMANDS = new Set([
@@ -7,7 +8,9 @@ const HEART_REQUIRED_COMMANDS = new Set([
   "nsfw3",
   "sfw",
   "애니짤",
-  "나츠미-서버셋업",
+  "나츠미서버셋업",
+  "나츠미셋업",
+  "환영설정",
 ]);
 
 const needsPremiumHeart = (commandName) => {
@@ -45,6 +48,13 @@ export default {
       }
 
       try {
+        if (await isCommandDisabled(interaction.guildId, commandName)) {
+          return interaction.reply({
+            content: "이 서버 대시보드에서 꺼진 명령어라 사용할 수 없어.",
+            ephemeral: true,
+          }).catch(() => null);
+        }
+
         if (needsPremiumHeart(commandName)) {
           const heart = await checkPremiumHeart(interaction.user.id);
           if (!heart.ok) {
