@@ -12,6 +12,7 @@ import {
 } from "./utils/runtimeHealth.js";
 import { 
   Client, 
+  ChannelType,
   GatewayIntentBits, 
   Events, 
   Collection, 
@@ -19,8 +20,10 @@ import {
   Routes, 
   Partials,
   Options,
-  IntentsBitField
+  IntentsBitField,
+  PermissionFlagsBits
 } from "discord.js";
+import DashboardSettings from "./models/DashboardSettings.js";
 
 dotenv.config();
 
@@ -34,6 +37,7 @@ async function startServer() {
   console.log(">>> [BOOT] starting startServer() function...");
   const app = express();
   const PORT = Number(process.env.PORT || process.env.WEB_PORT || 3000);
+  app.use(express.json({ limit: "1mb" }));
 
   const instanceId = Math.random().toString(36).substring(2, 8);
   let botStatus = "Offline";
@@ -48,6 +52,8 @@ async function startServer() {
   const discordToken = process.env.TOKEN?.replace(/['"]/g, "").trim();
   const geminiKey = process.env.MY_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   const clientId = process.env.ID?.replace(/['"]/g, "").trim();
+  const clientSecret = process.env.DISCORD_CLIENT_SECRET?.replace(/['"]/g, "").trim();
+  const dashboardRedirectUri = process.env.DASHBOARD_REDIRECT_URI || process.env.DISCORD_REDIRECT_URI || "";
   const mongoUri = process.env.MONGOOSE?.replace(/['"]/g, "").trim();
 
   const addLog = (msg: string) => {
@@ -331,6 +337,111 @@ async function startServer() {
       isCooling: isCooling || (Date.now() - lastCoolingAt < 30000), // 30s cooling window after event
       engine: "v6.4.0 Damping Core",
     });
+  });
+
+  const toDashboardChannelType = (type: ChannelType) => {
+    if (type === ChannelType.GuildText) return "text";
+    if (type === ChannelType.GuildVoice) return "voice";
+    if (type === ChannelType.GuildCategory) return "category";
+    return null;
+  };
+
+  const serializeGuild = async (guild: any) => {
+    const botMember = await guild.members.fetchMe().catch(() => null);
+    const channels = [...guild.channels.cache.values()]
+      .map((channel: any) => {
+        const type = toDashboardChannelType(channel.type);
+        if (!type) return null;
+        return { id: channel.id, name: channel.name, type, parentId: channel.parentId || null };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => a.name.localeCompare(b.name, "ko"));
+
+    return {
+      id: guild.id,
+      name: guild.name,
+      icon: guild.iconURL?.({ extension: "png", size: 128 }) || "",
+      manageable: Boolean(botMember?.permissions?.has(PermissionFlagsBits.ManageGuild)),
+      memberCount: guild.memberCount,
+      channels,
+    };
+  };
+
+  app.get("/api/auth/discord", (req, res) => {
+    if (!clientId || !dashboardRedirectUri) {
+      return res.status(503).json({ error: "Discord OAuth is not configured." });
+    }
+    const url = new URL("https://discord.com/oauth2/authorize");
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", dashboardRedirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "identify guilds");
+    if (req.query.returnTo) url.searchParams.set("state", String(req.query.returnTo));
+    return res.redirect(url.toString());
+  });
+
+  app.get("/api/auth/discord/callback", async (req, res) => {
+    if (!clientId || !clientSecret || !dashboardRedirectUri || !req.query.code) {
+      return res.redirect(String(req.query.state || "/"));
+    }
+    return res.redirect(String(req.query.state || "/"));
+  });
+
+  app.get("/api/dashboard/session", (req, res) => {
+    res.json({
+      user: client?.user ? {
+        id: client.user.id,
+        username: client.user.username,
+        avatar: client.user.displayAvatarURL({ extension: "png", size: 128 }),
+      } : null,
+    });
+  });
+
+  app.get("/api/dashboard/guilds", async (req, res) => {
+    if (!client?.isReady()) return res.json({ guilds: [] });
+    const guilds = await Promise.all([...client.guilds.cache.values()].map((guild) => serializeGuild(guild)));
+    res.json({ guilds });
+  });
+
+  app.get("/api/dashboard/guilds/:guildId/settings", async (req, res) => {
+    const settings = await DashboardSettings.findOneAndUpdate(
+      { guildId: req.params.guildId },
+      { $setOnInsert: { guildId: req.params.guildId } },
+      { upsert: true, new: true }
+    ).lean();
+    res.json({ settings });
+  });
+
+  app.patch("/api/dashboard/guilds/:guildId/settings", async (req, res) => {
+    const next = req.body?.settings || {};
+    const settings = await DashboardSettings.findOneAndUpdate(
+      { guildId: req.params.guildId },
+      { $set: { ...next, guildId: req.params.guildId } },
+      { upsert: true, new: true }
+    ).lean();
+    res.json({ ok: true, settings });
+  });
+
+  app.post("/api/dashboard/guilds/:guildId/welcome/test", async (req, res) => {
+    const guild = client?.guilds.cache.get(req.params.guildId);
+    if (!guild) return res.status(404).json({ error: "Guild not found." });
+    const settings = req.body?.settings?.welcome || req.body?.settings || {};
+    const channelId = settings.channelId;
+    const channel = channelId ? await guild.channels.fetch(channelId).catch(() => null) : null;
+    if (!channel || channel.type !== ChannelType.GuildText) return res.status(400).json({ error: "Welcome channel is not configured." });
+    await channel.send("나츠미 환영인사 테스트 메시지야. 실제 입장 시에는 프로필 카드와 설정한 문구가 같이 전송돼.").catch(() => null);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/dashboard/guilds/:guildId/notice", async (req, res) => {
+    const guild = client?.guilds.cache.get(req.params.guildId);
+    if (!guild) return res.status(404).json({ error: "Guild not found." });
+    const notice = req.body?.notice || {};
+    const channel = notice.channelId ? await guild.channels.fetch(notice.channelId).catch(() => null) : null;
+    if (!channel || channel.type !== ChannelType.GuildText) return res.status(400).json({ error: "Notice channel is not configured." });
+    if (!notice.message) return res.status(400).json({ error: "Notice message is empty." });
+    await channel.send({ content: notice.message }).catch(() => null);
+    res.json({ ok: true });
   });
 
   app.post("/api/flush", (req, res) => {
