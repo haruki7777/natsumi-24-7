@@ -11,11 +11,11 @@ import {
 } from "@discordjs/voice";
 import ffmpegPath from "ffmpeg-static";
 import NatsumiTtsPreference from "../models/NatsumiTtsPreference.js";
-import { GUILD_TTS_USER_ID } from "../commands/util/tts_setup.js";
 import { getFishReferenceId, getTtsVoiceByValue, isStaticTtsVoiceId } from "./ttsVoices.js";
 
 if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
 
+const GUILD_TTS_USER_ID = "__guild_default__";
 const MAX_TTS_LENGTH = Number(process.env.NATSUMI_TTS_MAX_LENGTH || 180);
 const queues = new Map();
 
@@ -166,12 +166,12 @@ const enqueue = (guildId, task) => {
   return next;
 };
 
-export const speakMessage = async ({ message, voiceChannel }) => {
+export const speakMessage = async ({ message, voiceChannel, preference = null }) => {
   const text = cleanText(message);
   if (!text) return false;
 
   return enqueue(message.guild.id, async () => {
-    const pref = await NatsumiTtsPreference.findOne({ guildId: message.guild.id, userId: GUILD_TTS_USER_ID }).lean().catch(() => null);
+    const pref = preference || await NatsumiTtsPreference.findOne({ guildId: message.guild.id, userId: GUILD_TTS_USER_ID }).lean().catch(() => null);
     const buffer = await fetchTtsBuffer(text, pref);
     return playBuffer({ message, voiceChannel, buffer });
   });

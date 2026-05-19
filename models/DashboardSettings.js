@@ -21,6 +21,7 @@ const dashboardSettingsSchema = new Schema({
     notice: { type: Boolean, default: true },
     ticket: { type: Boolean, default: true },
     tts: { type: Boolean, default: false },
+    emojiUpscale: { type: Boolean, default: false },
   },
   welcome: {
     enabled: { type: Boolean, default: false },
@@ -37,6 +38,11 @@ const dashboardSettingsSchema = new Schema({
     channelId: String,
   },
   tts: { type: ttsSchema, default: () => ({}) },
+  emojiUpscale: {
+    enabled: { type: Boolean, default: false },
+    channelId: String,
+    webhookName: { type: String, default: "Natsumi Emoji Upscaler" },
+  },
 }, { timestamps: true });
 
 export default model("DashboardSettings", dashboardSettingsSchema);

@@ -1,6 +1,7 @@
 import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Events, PermissionFlagsBits } from "discord.js";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { GoogleGenAI, Modality } from "@google/genai";
+import DashboardSettings from "../models/DashboardSettings.js";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
 import ProcessedMessage from "../models/ProcessedMessage.js";
 import {
@@ -329,7 +330,15 @@ export default {
   async execute(message) {
     if (!message.guild || message.author.bot) return;
 
-    const setup = await NatsumiGuildSetup.findOne({ guildId: message.guild.id }).lean().catch(() => null);
+    const [setup, dashboard] = await Promise.all([
+      NatsumiGuildSetup.findOne({ guildId: message.guild.id }).lean().catch(() => null),
+      DashboardSettings.findOne({ guildId: message.guild.id }).lean().catch(() => null),
+    ]);
+    if (dashboard?.emojiUpscale?.enabled && dashboard.emojiUpscale.channelId === message.channel.id) {
+      if (await handleEmojiChannel(message)) await markProcessed(message);
+      return;
+    }
+
     const featureKey = getChannelFeatureKey(message.channel, setup);
     if (!featureKey) return;
 

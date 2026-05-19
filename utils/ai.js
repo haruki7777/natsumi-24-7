@@ -22,6 +22,31 @@ const getValidKey = () => {
     return k.toString().replace(/['"]/g, "").trim();
 };
 
+const getFallbackApiUrl = () => {
+    const url = process.env.NATSUMI_API_URL || process.env.NATSUMI_HF_API_URL || process.env.HUGGINGFACE_NATSUMI_API_URL;
+    return url ? url.toString().replace(/\/$/, "") : "";
+};
+
+const generateHuggingFaceContent = async (message, system = "") => {
+    const baseUrl = getFallbackApiUrl();
+    if (!baseUrl) return null;
+
+    const response = await fetch(`${baseUrl}/assistant`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            message,
+            system,
+            user_id: "discord-bot",
+            guild_id: "natsumi",
+        }),
+        signal: AbortSignal.timeout?.(45000),
+    });
+    if (!response.ok) throw new Error(`HF_API_${response.status}`);
+    const data = await response.json();
+    return data.reply || data.text || null;
+};
+
 export const getAI = () => {
     const key = getValidKey();
     if (!key) return null;
@@ -35,7 +60,13 @@ export const getAI = () => {
 
 export const generateDistributedContent = async (params) => {
     const ai = getAI();
-    if (!ai) throw new Error("NO_API_KEY");
+    const fallbackText = params.contents?.map((item) => item.parts?.map((part) => part.text).filter(Boolean).join("\n")).filter(Boolean).join("\n") || "";
+    const system = params.config?.systemInstruction || "";
+    if (!ai) {
+        const hf = await generateHuggingFaceContent(fallbackText, system);
+        if (hf) return { text: hf, provider: "huggingface" };
+        throw new Error("NO_API_KEY");
+    }
 
     const now = Date.now();
     
@@ -114,6 +145,8 @@ export const generateDistributedContent = async (params) => {
         }
     }
 
+    const hf = await generateHuggingFaceContent(fallbackText, system);
+    if (hf) return { text: hf, provider: "huggingface" };
     throw new Error("ALL_MODELS_FAILED");
 };
 

@@ -17,9 +17,12 @@ const disabledCategories = () =>
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean)
   );
+const dashboardOnlyCommands = new Set(["tts설정"]);
 
 const shouldSkipCommand = (category, commandName) => {
-  return disabledCategories().has(category.toLowerCase()) || disabledCommands().has(commandName);
+  return dashboardOnlyCommands.has(commandName)
+    || disabledCategories().has(category.toLowerCase())
+    || disabledCommands().has(commandName);
 };
 
 const importFresh = async (filePath) => {

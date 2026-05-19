@@ -1,4 +1,5 @@
 import { ChannelType, Events } from "discord.js";
+import DashboardSettings from "../models/DashboardSettings.js";
 import NatsumiGuildSetup from "../models/NatsumiGuildSetup.js";
 import { speakMessage } from "../utils/voiceTts.js";
 
@@ -14,7 +15,15 @@ const isTtsNamedChannel = (channel) => {
     || name.includes("목소리");
 };
 
-const resolveTtsChannelMatch = (message, setup) => {
+const resolveTtsChannelMatch = (message, setup, dashboard) => {
+  if (dashboard?.features?.tts === false || dashboard?.tts?.enabled === false) {
+    return { ok: false, shouldRepair: false };
+  }
+  const dashboardTtsId = dashboard?.tts?.textChannelId;
+  if (dashboardTtsId) {
+    return { ok: message.channel.id === dashboardTtsId, shouldRepair: false };
+  }
+
   const configuredTtsId = setup?.featureChannels?.tts;
   if (!configuredTtsId) return { ok: isTtsNamedChannel(message.channel), shouldRepair: false };
   if (message.channel.id === configuredTtsId) return { ok: true, shouldRepair: false };
@@ -42,7 +51,10 @@ const repairTtsChannelId = async (guildId, channelId) => {
   ).catch(() => {});
 };
 
-const getTargetVoiceChannel = (message) => {
+const getTargetVoiceChannel = (message, dashboard) => {
+  const dashboardVoiceId = dashboard?.tts?.voiceChannelId;
+  const configured = dashboardVoiceId ? message.guild.channels.cache.get(dashboardVoiceId) : null;
+  if (configured?.type === ChannelType.GuildVoice) return configured;
   if (message.channel?.type === ChannelType.GuildVoice) return message.channel;
   return message.member?.voice?.channel || null;
 };
@@ -54,12 +66,15 @@ export default {
     if (!message.guild || message.author.bot) return;
     if (!message.content?.trim()) return;
 
-    const setup = await NatsumiGuildSetup.findOne({ guildId: message.guild.id }).lean().catch(() => null);
-    const match = resolveTtsChannelMatch(message, setup);
+    const [setup, dashboard] = await Promise.all([
+      NatsumiGuildSetup.findOne({ guildId: message.guild.id }).lean().catch(() => null),
+      DashboardSettings.findOne({ guildId: message.guild.id }).lean().catch(() => null),
+    ]);
+    const match = resolveTtsChannelMatch(message, setup, dashboard);
     if (!match.ok) return;
     if (match.shouldRepair) await repairTtsChannelId(message.guild.id, message.channel.id);
 
-    const voiceChannel = getTargetVoiceChannel(message);
+    const voiceChannel = getTargetVoiceChannel(message, dashboard);
     if (!voiceChannel) {
       await message.reply({
         content: "먼저 음성채널에 들어간 다음 TTS방에 글을 적어줘요.",
@@ -69,7 +84,10 @@ export default {
     }
 
     try {
-      const spoken = await speakMessage({ message, voiceChannel });
+      const preference = dashboard?.tts?.voice
+        ? { voiceId: dashboard.tts.voice, voiceName: dashboard.tts.voice }
+        : null;
+      const spoken = await speakMessage({ message, voiceChannel, preference });
       if (!spoken) await message.react("⚠️").catch(() => {});
     } catch (error) {
       console.error("[NatsumiTTS] failed:", error);

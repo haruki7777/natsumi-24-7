@@ -107,9 +107,12 @@ const disabledCategories = new Set(
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean)
 );
+const dashboardOnlyCommands = new Set(["tts설정"]);
 
 const shouldSkipCommand = (category: string, commandName: string) => {
-  return disabledCategories.has(category.toLowerCase()) || disabledCommands.has(commandName);
+  return dashboardOnlyCommands.has(commandName)
+    || disabledCategories.has(category.toLowerCase())
+    || disabledCommands.has(commandName);
 };
 
 const loadBotResources = async (c: ExtendedClient) => {
