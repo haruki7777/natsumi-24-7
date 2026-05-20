@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
-const DASHBOARD_URL = process.env.NATSUMI_DASHBOARD_URL || process.env.DASHBOARD_URL || "https://natsumidashboard.kro.kr/";
+const DASHBOARD_URL = process.env.NATSUMI_DASHBOARD_URL || process.env.DASHBOARD_URL || "http://natsumidashboard.kro.kr/";
 
 export default {
   data: new SlashCommandBuilder()
